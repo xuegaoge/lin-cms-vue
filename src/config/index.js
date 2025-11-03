@@ -10,4 +10,6 @@ const Config = {
   baseURL: process.env.VUE_APP_BASE_URL, // API接口baseURL，在根目录.env文件查找对应环境变量配置
 }
 
+Config.baseUrl = Config.baseURL
+
 export default Config

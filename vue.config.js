@@ -29,6 +29,32 @@ module.exports = {
   devServer: {
     client: {
       overlay: false
+    },
+    proxy: {
+      '/cms': {
+        target: 'https://api.okyu.xyz',
+        changeOrigin: true,
+        secure: false,
+        pathRewrite: {
+          '^/cms': '/cms'
+        }
+      },
+      '/blog': {
+        target: 'https://api.okyu.xyz',
+        changeOrigin: true,
+        secure: false,
+        pathRewrite: {
+          '^/blog': '/blog'
+        }
+      },
+      '/v1': {
+        target: 'https://api.okyu.xyz',
+        changeOrigin: true,
+        secure: false,
+        pathRewrite: {
+          '^/v1': '/v1'
+        }
+      }
     }
   },
   // node_modules依赖项es6语法未转换问题

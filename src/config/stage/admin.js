@@ -110,6 +110,26 @@ const adminRouter = {
       icon: 'iconfont icon-rizhiguanli',
       order: 2
     },
+    {
+      route: '/video-download/create',
+      filePath: 'view/admin/video-download/video-download-create.vue',
+      name: 'video-download-create',
+      title: '视频下载-创建任务',
+      icon: 'iconfont icon-upload',
+      permission: ['超级管理员独有权限'],
+      type: 'view',
+      inNav: true
+    },
+    {
+      route: '/video-download/list',
+      filePath: 'view/admin/video-download/video-download-list.vue',
+      name: 'video-download-list',
+      title: '视频下载-任务历史',
+      icon: 'iconfont icon-time',
+      permission: ['超级管理员独有权限'],
+      type: 'view',
+      inNav: true
+    },
   ],
 }
 
