@@ -63,8 +63,9 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Config } from '@/lin/model/selection'
 
 const settings = reactive({
     tax: {
@@ -79,16 +80,33 @@ const settings = reactive({
         s01_go: 75,
         roi_min: 30
     },
-    shipping: [
-        { type: '空运', unit_price: 6.5, min_weight: 21 },
-        { type: '海运 (美西)', unit_price: 1.2, min_weight: 100 },
-        { type: '海运 (美东)', unit_price: 1.8, min_weight: 100 }
-    ]
+    shipping: []
 })
 
-const handleSaveAll = () => {
-    ElMessage.success('系统设置已全量更新')
+const loadData = async () => {
+    try {
+        const res = await Config.getConfig()
+        if (res) {
+            // Assume backend returns structured JSON matching settings
+            Object.assign(settings, res)
+        }
+    } catch (e) {
+        console.error(e)
+    }
 }
+
+const handleSaveAll = async () => {
+    try {
+        await Config.updateConfig(settings)
+        ElMessage.success('系统设置已全量更新')
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+onMounted(() => {
+    loadData()
+})
 </script>
 
 <style lang="scss" scoped>

@@ -55,16 +55,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Product, Strategy } from '@/lin/model/selection'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const activeCategory = ref('All')
+const loading = ref(false)
 
-const currentProduct = ref({
-    productName: '瑜伽垫 Pro',
-    asin: 'B08XXXXXXX'
-})
+const currentProduct = ref(null)
 
 const categories = [
   { label: '全部策略', value: 'All' },
@@ -80,12 +79,16 @@ const strategies = [
   { code: 'S02', name: '40题自诊系统', type: 'Decision', typeLabel: '判定型', priority: 'P0', description: '通过40个核心问题快速判定产品的可行性与潜力。', path: 'diagnosis' },
   { code: 'S03', name: '完整利润模型', type: 'Financial', typeLabel: '财务型', priority: 'P0', description: '精细化的成本拆解与多场景利润预测，包含敏感性分析。', path: 'profit' },
   { code: 'S04', name: '36项风险预警', type: 'RiskDetection', typeLabel: '风险型', priority: 'P0', description: '覆盖版权、安全、政策、物流等36个维度的风险排查。', path: 'risk' },
-  { code: 'S05', name: '11维度评估', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '更细粒度的11个维度加权评分模型。', path: 'evaluation11' },
-  { code: 'S06', name: '五维选品模型', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '经典的五维度（潜力、竞争、利润、难度、风险）分析。', path: 'evaluation5' },
-  { code: 'S07', name: '赛道市场评估', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '评估整个类目赛道的健康度与切入机会。', path: 'market' },
-  { code: 'S08', name: 'TOP20策略库', type: 'Recommendation', typeLabel: '推荐型', priority: 'P1', description: '根据产品特征自动匹配最优的运营打法建议。', path: 'recommendation' },
-  { code: 'S11', name: '企业定位评估', type: 'Scoring', typeLabel: '评分型', priority: 'P0', description: '评估企业自身实力，动态调整其他策略的决策阈值。', path: 'enterprise' },
-  { code: 'S18', name: '压力测试', type: 'Financial', typeLabel: '财务型', priority: 'P2', description: '模拟各种极端不利条件下产品的存活能力与底线。', path: 'stress-test' }
+  { code: 'S05', name: '11维度评估', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '更细粒度的11个维度加权评分模型。', path: 'scoring' },
+  { code: 'S06', name: '五维选品模型', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '经典的五维度分析法。', path: 'scoring' },
+  { code: 'S07', name: '赛道市场评估', type: 'Scoring', typeLabel: '评分型', priority: 'P1', description: '评估整个类目赛道的健康度与切入机会。', path: 'scoring' },
+  { code: 'S08', name: 'TOP20策略库', type: 'Recommendation', typeLabel: '推荐型', priority: 'P1', description: '根据产品特征自动匹配最优的运营打法建议。', path: 'top20' },
+  { code: 'S09', name: '蓝海深度识别', type: 'Recommendation', typeLabel: '推荐型', priority: 'P1', description: '深度挖掘市场空白点与机会区域。', path: 'blue-ocean' },
+  { code: 'S13', name: '爆点识别引擎', type: 'Decision', typeLabel: '判定型', priority: 'P1', description: '识别产品爆发潜力。', path: 'explosive' },
+  { code: 'S14', name: '20节点决策树', type: 'Decision', typeLabel: '判定型', priority: 'P0', description: '一票否决制逻辑判定。', path: 'decision-tree' },
+  { code: 'S15', name: '竞品分析矩阵', type: 'Decision', typeLabel: '判定型', priority: 'P1', description: '差异化突围机会分析。', path: 'competitor' },
+  { code: 'S11', name: '企业定位评估', type: 'Scoring', typeLabel: '评分型', priority: 'P0', description: '评估企业自身实力。', path: '../enterprise' },
+  { code: 'S18', name: '压力测试', type: 'Financial', typeLabel: '财务型', priority: 'P2', description: '模拟极端条件下产品的存活能力。', path: 'stress-test' }
 ]
 
 const filteredStrategies = computed(() => {
@@ -93,34 +96,37 @@ const filteredStrategies = computed(() => {
   return strategies.filter(s => s.type === activeCategory.value)
 })
 
-const getTypeTag = (type) => {
-  const map = {
-    'Scoring': 'primary',
-    'Decision': 'success',
-    'Financial': 'warning',
-    'RiskDetection': 'danger',
-    'Recommendation': 'info'
-  }
-  return map[type] || 'info'
+const loadProduct = async (id) => {
+    try {
+        const res = await Product.getProduct(id)
+        currentProduct.value = res
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 const handleExecute = (strategy) => {
-    if (strategy.code === 'S11') {
-        router.push('/selection/enterprise')
+    const productId = route.query.productId || 1
+    let path = strategy.path
+    if (path.startsWith('../')) {
+        router.push(path.replace('../', '/selection/'))
         return
     }
-    const productId = route.query.productId || 1
-    router.push(`/selection/strategy/${strategy.path}?productId=${productId}&code=${strategy.code}`)
+    
+    router.push({
+        path: `/selection/strategy/${path}`,
+        query: { productId, code: strategy.code }
+    })
 }
 
 const changeProduct = () => {
-  ElMessage.info('切换产品功能开发中')
+  router.push('/selection/product/product-list')
 }
 
 onMounted(() => {
   const productId = route.query.productId
   if (productId) {
-      console.log('Load product', productId)
+      loadProduct(productId)
   }
 })
 </script>

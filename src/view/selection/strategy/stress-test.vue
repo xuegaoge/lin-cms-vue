@@ -48,9 +48,11 @@
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import { Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
 const route = useRoute()
+const loading = ref(false)
 
 const handleBack = () => {
   const productId = route.query.productId
@@ -70,36 +72,41 @@ const scenarios = reactive({
 
 const results = ref([])
 
-const handleTest = () => {
-  tested.value = true
-  ElMessage.warning('正在进行高强度压力模拟...')
+const handleTest = async () => {
+  const productId = route.query.productId
+  if (!productId) return
   
-  // Mock calculation logic
-  results.value = [
-    { 
-      name: '场景A: 恶性价格战', 
-      profit: -5.2, 
-      status: 'fail', 
-      desc: `售价降低 ${scenarios.priceDrop}% 后，直接亏损。` 
-    },
-    { 
-      name: '场景B: 运费黑天鹅', 
-      profit: 8.5, 
-      status: 'pass', 
-      desc: `运费上涨 ${scenarios.shippingRise}% 后，仍保持微利。` 
-    },
-    { 
-      name: '场景C: 流量内卷', 
-      profit: 12.0, 
-      status: 'pass', 
-      desc: `CPC 上涨 ${scenarios.cpcRise}% 后，ROI 仍在可接受范围。` 
+  loading.value = true
+  // ElMessage.warning('正在进行高强度压力模拟...')
+  
+  try {
+      const res = await Strategy.execute('S18', productId, { scenarios })
+      processResult(res)
+  } catch (e) {
+      console.error(e)
+  } finally {
+      loading.value = false
+  }
+}
+
+const processResult = (res) => {
+    tested.value = true
+    if (res.resultData) {
+        let data = res.resultData
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data) } catch (e) {}
+        }
+        if (data.results) results.value = data.results
+    } else {
+        // Fallback if structure different
+        results.value = []
     }
-  ]
 }
 
 const survivalRate = computed(() => {
+  if (results.value.length === 0) return '0%'
   const passed = results.value.filter(r => r.status === 'pass').length
-  return passed > 0 ? `${Math.round((passed / 3) * 100)}%` : '0%'
+  return `${Math.round((passed / results.value.length) * 100)}%`
 })
 
 const survivalClass = computed(() => {

@@ -69,6 +69,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import { Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
 const route = useRoute()
@@ -177,13 +178,44 @@ watch(answers, () => {
     renderChart()
 })
 
-const handleSubmit = () => {
-    submitted.value = true
-    ElMessage.success('诊断提交成功，结果已保存至产品分析记录')
+const handleSubmit = async () => {
+    const productId = route.query.productId
+    if (!productId) {
+        ElMessage.error('缺少产品ID')
+        return
+    }
+    try {
+        await Strategy.submitDiagnosis(productId, answers)
+        submitted.value = true
+        ElMessage.success('诊断提交成功，结果已保存至产品分析记录')
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const loadData = async () => {
+    const productId = route.query.productId
+    if (!productId) return
+    // Try to load existing result via execute/get
+    try {
+        const res = await Strategy.execute('S02', productId) // Or a specific get method if execute triggers recalc
+        // Assuming result contains answers in resultData or a separate field
+        if (res.resultData) {
+            let data = res.resultData
+            if (typeof data === 'string') data = JSON.parse(data)
+            if (data.answers) {
+                Object.assign(answers, data.answers)
+                submitted.value = true
+            }
+        }
+    } catch (e) {
+        console.log('No existing diagnosis found')
+    }
 }
 
 onMounted(() => {
     initChart()
+    loadData()
     window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>

@@ -50,8 +50,8 @@ export class Enterprise {
  * 策略执行模型
  */
 export class Strategy {
-  static execute(strategyCode, productId) {
-    return post(`api/strategies/${strategyCode}/execute`, { product_id: productId })
+  static execute(strategyCode, productId, payload = {}) {
+    return post(`api/strategies/${strategyCode}/execute`, { product_id: productId, ...payload })
   }
 
   static executeAll(productId) {
@@ -111,5 +111,61 @@ export class Approval {
 
   static getPending(params) {
     return get('api/approval/pending', params)
+  }
+
+  static getHistory(params) {
+    return get('api/approval/history', params)
+  }
+}
+
+/**
+ * 系统配置模型
+ */
+export class Config {
+  static getConfig() {
+    return get('api/config')
+  }
+
+  static updateConfig(data) {
+    return put('api/config', data)
+  }
+
+  static getItems(group) {
+    return get(`api/config/group/${group}`)
+  }
+}
+
+/**
+ * 历史趋势模型
+ */
+export class Trends {
+  static getTrends(productId, params) {
+    return get(`api/products/${productId}/trends`, params)
+  }
+}
+
+/**
+ * SOP 模型
+ */
+export class SOP {
+  static getTasks(productId) {
+    return get(`api/products/${productId}/sop`)
+  }
+
+  static updateTask(taskId, data) {
+    return put(`api/sop/${taskId}`, data)
+  }
+}
+
+/**
+ * 检查清单模型
+ */
+export class Checklist {
+  static getItems(productId, type) {
+    return get(`api/products/${productId}/checklist`, { type })
+  }
+
+  static updateItem(itemId, checked) {
+    return put(`api/checklist/${itemId}`, { checked })
   }
 }

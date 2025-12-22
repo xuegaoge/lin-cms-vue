@@ -110,34 +110,72 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import * as echarts from 'echarts'
+import { Dashboard } from '@/lin/model/selection'
+import { ElMessage } from 'element-plus'
 
 const dateRange = ref([])
 const statusChart = ref(null)
 const coverageChart = ref(null)
 
 // 使用 Element Plus 图标类名
-const summaryData = [
-    { title: '待评估产品', value: '45', iconClass: 'el-icon-timer', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { title: '已通过 (GO)', value: '12', iconClass: 'el-icon-check', color: 'linear-gradient(135deg, #2af598 0%, #009efd 100%)' },
-    { title: '淘汰产品', value: '28', iconClass: 'el-icon-close', color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
-    { title: '预估年度ROI', value: '185%', iconClass: 'el-icon-money', color: 'linear-gradient(120deg, #f6d365 0%, #fda085 100%)' }
-]
+const summaryData = ref([
+    { title: '待评估产品', value: '-', iconClass: 'el-icon-timer', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    { title: '已通过 (GO)', value: '-', iconClass: 'el-icon-check', color: 'linear-gradient(135deg, #2af598 0%, #009efd 100%)' },
+    { title: '淘汰产品', value: '-', iconClass: 'el-icon-close', color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
+    { title: '预估年度ROI', value: '-', iconClass: 'el-icon-money', color: 'linear-gradient(120deg, #f6d365 0%, #fda085 100%)' }
+])
 
-const alerts = [
-    { product: '瑜伽垫 Pro', type: '毛利风险', desc: '海运费上涨 20%，导致净利润率跌破 10% 阈值。' },
-    { product: '智能加湿器', type: '竞争风险', desc: '类目新增 3 个竞品 ASIN，市场份额有萎缩风险。' },
-    { product: '蓝牙耳机', type: '侵权预警', desc: '监测到同类外观专利在欧盟区注册成功。' }
-]
+const alerts = ref([])
+const approvals = ref([])
 
-const approvals = [
-    { product: '折叠野营桌', status: '进行中', time: '2025-12-21' },
-    { product: '户外移动电源', status: '已通过', time: '2025-12-18' },
-    { product: '速干潜水服', status: '进行中', time: '2025-12-20' }
-]
+const loadData = async () => {
+  try {
+    const biData = await Dashboard.getBiData()
+    // 假设后端返回结构映射
+    if (biData.summary) {
+        summaryData.value[0].value = biData.summary.pending || 0
+        summaryData.value[1].value = biData.summary.passed || 0
+        summaryData.value[2].value = biData.summary.rejected || 0
+        summaryData.value[3].value = (biData.summary.roi || 0) + '%'
+    }
+    
+    if (biData.alerts) {
+        alerts.value = biData.alerts
+    } else {
+        // Fallback or separate call if needed
+        // const alertData = await Dashboard.getAlerts()
+        // alerts.value = alertData
+    }
 
-const initCharts = () => {
+    if (biData.approvals) {
+        approvals.value = biData.approvals
+    }
+
+    // Update charts if data is present
+    if (biData.charts) {
+        initCharts(biData.charts)
+    } else {
+        initCharts()
+    }
+
+  } catch (error) {
+    console.error('加载BI数据失败', error)
+    // ElMessage.error('加载BI数据失败')
+    initCharts() // Initialize with empty or default
+  }
+}
+
+const initCharts = (chartData = null) => {
     // 状态分布饼图
     const sChart = echarts.init(statusChart.value)
+    // Use chartData if available, else default
+    const statusData = chartData?.status || [
+        { value: 0, name: '通过 (GO)', itemStyle: { color: '#67c23a' } },
+        { value: 0, name: '评估中', itemStyle: { color: '#e6a23c' } },
+        { value: 0, name: '淘汰 (STOP)', itemStyle: { color: '#f56c6c' } },
+        { value: 0, name: '草稿', itemStyle: { color: '#909399' } }
+    ]
+    
     sChart.setOption({
         tooltip: { trigger: 'item' },
         legend: { bottom: '0%', left: 'center', itemWidth: 10, itemHeight: 10 },
@@ -151,24 +189,21 @@ const initCharts = () => {
             emphasis: {
                 label: { show: true, fontSize: '18', fontWeight: 'bold' }
             },
-            data: [
-                { value: 12, name: '通过 (GO)', itemStyle: { color: '#67c23a' } },
-                { value: 20, name: '评估中', itemStyle: { color: '#e6a23c' } },
-                { value: 28, name: '淘汰 (STOP)', itemStyle: { color: '#f56c6c' } },
-                { value: 15, name: '草稿', itemStyle: { color: '#909399' } }
-            ]
+            data: statusData
         }]
     })
 
     // 策略覆盖率柱状图
     const cChart = echarts.init(coverageChart.value)
+    const coverageData = chartData?.coverage || [0, 0, 0, 0, 0]
+    
     cChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'category', data: ['S01', 'S02', 'S03', 'S04', 'S05'], axisTick: { show: false }, axisLine: { lineStyle: { color: '#E4E7ED' } }, axisLabel: { color: '#606266' } },
         yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
         series: [{
-            data: [100, 85, 90, 70, 45],
+            data: coverageData,
             type: 'bar',
             barWidth: '40%',
             itemStyle: { 
@@ -189,7 +224,7 @@ const initCharts = () => {
 }
 
 onMounted(() => {
-    initCharts()
+    loadData()
 })
 </script>
 

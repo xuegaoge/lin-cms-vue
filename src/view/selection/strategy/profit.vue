@@ -56,9 +56,11 @@ import { ref, onMounted, reactive } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import { Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
 const route = useRoute()
+const loading = ref(false)
 
 const handleBack = () => {
   const productId = route.query.productId
@@ -75,21 +77,28 @@ let waterfallInstance = null
 let tornadoInstance = null
 
 const finance = reactive({
-    price: 39.99,
-    margin: 35.5,
-    roi: 125,
-    breakeven: 180,
-    payback: 2.5,
-    annualRoi: 450,
-    netProfit: 8.50
+    price: 0,
+    margin: 0,
+    roi: 0,
+    breakeven: 0,
+    payback: 0,
+    annualRoi: 0,
+    netProfit: 0
 })
 
-const initWaterfall = () => {
+const initWaterfall = (data) => {
     if (!waterfallChart.value) return
+    if (waterfallInstance) waterfallInstance.dispose()
     waterfallInstance = echarts.init(waterfallChart.value)
+    
+    // Default data structure if missing
+    const categories = data?.categories || ['售价', '采购', '运费', 'FBA', '佣金', '广告', '利润']
+    const baseData = data?.baseData || [0, 31.49, 26.49, 19.49, 13.49, 8.5, 0]
+    const amountData = data?.amountData || [39.99, 8.5, 5, 7, 6, 4.99, 8.5]
+
     const option = {
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        xAxis: { type: 'category', data: ['售价', '采购', '运费', 'FBA', '佣金', '广告', '利润'] },
+        xAxis: { type: 'category', data: categories },
         yAxis: { type: 'value' },
         series: [
             {
@@ -97,43 +106,81 @@ const initWaterfall = () => {
                 type: 'bar',
                 stack: 'Total',
                 itemStyle: { borderColor: 'transparent', color: 'transparent' },
-                data: [0, 31.49, 26.49, 19.49, 13.49, 8.5, 0]
+                data: baseData
             },
             {
                 name: '金额',
                 type: 'bar',
                 stack: 'Total',
                 label: { show: true, position: 'inside' },
-                data: [39.99, 8.5, 5, 7, 6, 4.99, 8.5]
+                data: amountData
             }
         ]
     }
     waterfallInstance.setOption(option)
 }
 
-const initTornado = () => {
+const initTornado = (data) => {
     if (!tornadoChart.value) return
+    if (tornadoInstance) tornadoInstance.dispose()
     tornadoInstance = echarts.init(tornadoChart.value)
+    
+    // Default data
+    const categories = data?.categories || ['售价变动', '成本变动', '运费变动', '广告CPC', '转化率']
+    const posData = data?.posData || [12, -8, -5, -15, 20]
+    const negData = data?.negData || [-15, 6, 4, 18, -25]
+
     const option = {
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'value', position: 'top' },
-        yAxis: { type: 'category', data: ['售价变动', '成本变动', '运费变动', '广告CPC', '转化率'] },
+        yAxis: { type: 'category', data: categories },
         series: [
-            { name: '+10%', type: 'bar', stack: 'Total', label: { show: true }, data: [12, -8, -5, -15, 20] },
-            { name: '-10%', type: 'bar', stack: 'Total', label: { show: true }, data: [-15, 6, 4, 18, -25] }
+            { name: '+10%', type: 'bar', stack: 'Total', label: { show: true }, data: posData },
+            { name: '-10%', type: 'bar', stack: 'Total', label: { show: true }, data: negData }
         ]
     }
     tornadoInstance.setOption(option)
 }
 
-const handleRecalculate = () => {
-    ElMessage.success('财务数据已根据最新汇率和运费模板更新')
+const handleRecalculate = async () => {
+    const productId = route.query.productId
+    if (!productId) return
+    loading.value = true
+    try {
+        const res = await Strategy.execute('S03', productId)
+        processResult(res)
+        ElMessage.success('财务数据已根据最新汇率和运费模板更新')
+    } catch (e) {
+        console.error(e)
+    } finally {
+        loading.value = false
+    }
+}
+
+const processResult = (res) => {
+    let data = {}
+    if (res.resultData) {
+        try {
+            data = typeof res.resultData === 'string' ? JSON.parse(res.resultData) : res.resultData
+        } catch (e) {}
+    }
+    
+    if (data.finance) {
+        Object.assign(finance, data.finance)
+    }
+    
+    initWaterfall(data.waterfall)
+    initTornado(data.tornado)
+}
+
+const loadData = async () => {
+    // Try to auto-calc or load last result
+    handleRecalculate()
 }
 
 onMounted(() => {
-    initWaterfall()
-    initTornado()
+    loadData()
     window.addEventListener('resize', () => {
         waterfallInstance?.resize()
         tornadoInstance?.resize()

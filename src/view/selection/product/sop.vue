@@ -35,8 +35,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { SOP } from '@/lin/model/selection'
+import { ElMessage } from 'element-plus'
 
+const route = useRoute()
 const activeStep = ref(1)
 
 const steps = [
@@ -47,19 +51,42 @@ const steps = [
     { title: '正式上架', desc: '开始销售与测评' }
 ]
 
-const allTasks = [
-    { step: 1, task: '完成样板 1:1 测试', owner: '王小二', deadline: '2025-12-25', completed: true },
-    { step: 1, task: '签署供应商合同', owner: '王小二', deadline: '2025-12-28', completed: false },
-    { step: 1, task: '提交首批采购申请', owner: '李大牛', deadline: '2025-12-30', completed: false }
-]
+const allTasks = ref([])
 
 const currentTasks = computed(() => {
-    return allTasks.filter(t => t.step === activeStep.value)
+    return allTasks.value.filter(t => t.step === activeStep.value)
 })
 
-const handleTaskChange = (row) => {
-    console.log('Task changed', row)
+const loadData = async () => {
+    const productId = route.params.id
+    if (!productId) return
+    try {
+        const res = await SOP.getTasks(productId)
+        if (res && res.tasks) {
+            allTasks.value = res.tasks
+            // Determine active step based on progress
+            if (res.activeStep) activeStep.value = res.activeStep
+        }
+    } catch (e) {
+        console.error(e)
+    }
 }
+
+const handleTaskChange = async (row) => {
+    try {
+        await SOP.updateTask(row.id, { completed: row.completed })
+        ElMessage.success('任务状态已更新')
+    } catch (e) {
+        console.error(e)
+        // Revert on error
+        row.completed = !row.completed
+        ElMessage.error('更新失败')
+    }
+}
+
+onMounted(() => {
+    loadData()
+})
 </script>
 
 <style lang="scss" scoped>

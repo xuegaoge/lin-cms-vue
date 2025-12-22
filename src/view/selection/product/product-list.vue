@@ -101,6 +101,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Product } from '@/lin/model/selection'
 
 const router = useRouter()
 const loading = ref(false)
@@ -112,48 +113,6 @@ const searchForm = reactive({
 })
 
 const tableData = ref([])
-
-// Mock Data Generation
-const generateMockData = () => {
-  return [
-    {
-      id: 1,
-      productName: '瑜伽垫 Pro (加厚防滑)',
-      asin: 'B08XXXXXXX',
-      category: '运动户外',
-      status: '评估中',
-      score: 85.5,
-      updatedAt: '2025-12-21 14:30'
-    },
-    {
-      id: 2,
-      productName: '智能空气加湿器',
-      asin: 'B09YYYYYYY',
-      category: '家居生活',
-      status: '通过',
-      score: 92.0,
-      updatedAt: '2025-12-20 09:15'
-    },
-    {
-      id: 3,
-      productName: '无线蓝牙耳机 Case',
-      asin: 'B07ZZZZZZZ',
-      category: '消费电子',
-      status: '淘汰',
-      score: 45.0,
-      updatedAt: '2025-12-19 11:20'
-    },
-    {
-      id: 4,
-      productName: '户外折叠野营桌',
-      asin: 'B05AAAAAAA',
-      category: '运动户外',
-      status: '评估中',
-      score: 76.5,
-      updatedAt: '2025-12-22 10:00'
-    }
-  ]
-}
 
 const getStatusType = (status) => {
   const map = {
@@ -171,17 +130,18 @@ const getScoreColor = (score) => {
     return '#f56c6c'
 }
 
-const handleSearch = () => {
+const handleSearch = async () => {
   loading.value = true
-  setTimeout(() => {
-    const data = generateMockData()
-    tableData.value = data.filter(item => {
-        const nameMatch = !searchForm.name || item.productName.includes(searchForm.name) || item.asin.includes(searchForm.name)
-        const catMatch = !searchForm.category || item.category === searchForm.category
-        return nameMatch && catMatch
-    })
+  try {
+    const res = await Product.getProducts(searchForm)
+    // 根据后端返回结构适配，通常列表在 items 中
+    tableData.value = res.items || res
+  } catch (error) {
+    console.error('获取产品列表失败', error)
+    // ElMessage.error('获取产品列表失败') // axios 拦截器可能已处理
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const resetForm = () => {

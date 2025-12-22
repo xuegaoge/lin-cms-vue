@@ -24,7 +24,7 @@
             <div class="group-title">{{ group.title }}</div>
             <div class="items">
               <div v-for="item in group.items" :key="item.id" class="check-item" :class="{ checked: item.checked }">
-                <el-checkbox v-model="item.checked" @change="calculateProgress">
+                <el-checkbox v-model="item.checked" @change="handleCheck(item)">
                   <span class="item-text">{{ item.text }}</span>
                 </el-checkbox>
                 <el-tag size="small" type="info" v-if="item.required" effect="plain">必填</el-tag>
@@ -38,41 +38,18 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Checklist } from '@/lin/model/selection'
 
+const route = useRoute()
 const currentType = ref('pre_selection')
 const progress = ref(0)
-
 const checklists = reactive({
-  pre_selection: [
-    {
-      title: '合规与风控',
-      items: [
-        { id: 1, text: '检查是否存在外观/发明专利侵权风险', checked: false, required: true },
-        { id: 2, text: '确认产品是否属于危险品（Hazmat）', checked: false, required: true },
-        { id: 3, text: '核实类目审核（Gating）要求', checked: false, required: true }
-      ]
-    },
-    {
-      title: '市场验证',
-      items: [
-        { id: 4, text: '核算毛利率是否 > 30%', checked: false, required: true },
-        { id: 5, text: '确认 Top 10 竞品无不可逾越的护城河', checked: false, required: false },
-        { id: 6, text: 'Google Trends 趋势确认无下行风险', checked: false, required: false }
-      ]
-    }
-  ],
-  pre_launch: [
-    {
-      title: 'Listing 准备',
-      items: [
-        { id: 11, text: '主图 3D 渲染完成', checked: false, required: true },
-        { id: 12, text: 'A+ 页面文案定稿', checked: false, required: true },
-        { id: 13, text: '埋词库（SEO）整理完毕', checked: false, required: true }
-      ]
-    }
-  ]
+    pre_selection: [],
+    pre_launch: [],
+    post_launch: []
 })
 
 const currentList = computed(() => checklists[currentType.value] || [])
@@ -98,12 +75,45 @@ const calculateProgress = () => {
   progress.value = total === 0 ? 0 : Math.round((checked / total) * 100)
 }
 
-const handleSave = () => {
-  ElMessage.success('检查清单进度已保存')
+const loadData = async () => {
+    const productId = route.params.id
+    if (!productId) return
+    
+    // Load for current type
+    try {
+        const res = await Checklist.getItems(productId, currentType.value)
+        if (res && Array.isArray(res)) {
+            checklists[currentType.value] = res
+            calculateProgress()
+        }
+    } catch (e) {
+        console.error(e)
+    }
 }
 
+// Watch type change to reload data
 watch(currentType, () => {
-  calculateProgress()
+  loadData()
+})
+
+const handleCheck = async (item) => {
+    try {
+        await Checklist.updateItem(item.id, item.checked)
+        calculateProgress()
+    } catch (e) {
+        console.error(e)
+        item.checked = !item.checked // Revert
+        ElMessage.error('更新失败')
+    }
+}
+
+const handleSave = () => {
+  // Usually auto-saved on check, but can be a manual trigger if bulk update
+  ElMessage.success('检查清单进度已同步')
+}
+
+onMounted(() => {
+    loadData()
 })
 </script>
 

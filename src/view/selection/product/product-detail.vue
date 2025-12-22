@@ -330,6 +330,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import { Product, Strategy } from '@/lin/model/selection'
 
 const route = useRoute()
 const router = useRouter()
@@ -413,16 +414,25 @@ onMounted(() => {
   }
 })
 
-const loadData = (id) => {
-  console.log('Load data for', id)
-  // Mock loading
-  if(id === '1') {
-      form.productName = '瑜伽垫 Pro (加厚防滑)'
-      form.asin = 'B08XXXXXXX'
-      form.category = '运动户外'
-      form.monthlySearchVolume = 52000
-      form.targetPrice = 29.99
-      form.averageRating = 4.2
+const loadData = async (id) => {
+  try {
+    loading.value = true // Note: variable name was executing in template, but usually loading is used. Template uses executing for execution.
+    // We might need a separate loading state for data fetch.
+    // The template uses v-loading="executing". I should probably add a loading state or just use executing?
+    // Let's use executing for now or add loading.
+    // Actually template says v-loading="executing" element-loading-text="策略模型正在运算中...". This is specific to strategy.
+    // I should add a pageLoading state? Or just block it.
+    // For now, I'll just fetch.
+    const res = await Product.getProduct(id)
+    Object.assign(form, res) // Assuming res matches form structure or flat
+    // If backend returns { productName: ... }, this works.
+    
+    // Check if strategies results are included
+    if (res.strategies) {
+        strategyResults.value = res.strategies
+    }
+  } catch (error) {
+    console.error('加载产品详情失败', error)
   }
 }
 
@@ -430,51 +440,62 @@ const handleBack = () => {
   router.back()
 }
 
-const handleSave = () => {
-  console.log('Save form', form)
-  ElMessage.success('保存成功')
+const handleSave = async () => {
+  try {
+    if (isEdit.value) {
+      await Product.updateProduct(route.params.id, form)
+      ElMessage.success('更新成功')
+    } else {
+      const res = await Product.createProduct(form)
+      ElMessage.success('创建成功')
+      router.replace(`/selection/product/${res.id}`)
+    }
+  } catch (error) {
+    console.error('保存失败', error)
+  }
 }
 
 // 修改后的执行逻辑
-const confirmExecution = () => {
+const confirmExecution = async () => {
   dialogVisible.value = false
   executing.value = true
   
-  // 模拟 API 调用延迟
-  setTimeout(() => {
-    executing.value = false
-    const now = dayjs().format('YYYY-MM-DD HH:mm')
-    
-    if (executionType.value === 'all' || executionType.value === 's01') {
-      const idx = strategyResults.value.findIndex(i => i.code === 'S01')
-      if(idx > -1) strategyResults.value.splice(idx, 1)
-      
-      strategyResults.value.unshift({ 
-        code: 'S01', 
-        name: '四层评估体系', 
-        score: (Math.random() * 10 + 80).toFixed(1), // 随机 80-90 分
-        executedAt: now, 
-        path: 'evaluation' 
-      })
+  try {
+    let res
+    const productId = route.params.id
+    if (executionType.value === 'all') {
+      res = await Strategy.executeAll(productId)
+    } else {
+       // execute specific strategy like s01, s03
+       // Strategy.execute takes (code, productId)
+       const code = executionType.value.toUpperCase()
+       res = await Strategy.execute(code, productId)
     }
     
-    if (executionType.value === 'all' || executionType.value === 's03') {
-       const idx = strategyResults.value.findIndex(i => i.code === 'S03')
-       if(idx > -1) strategyResults.value.splice(idx, 1)
-
-       strategyResults.value.unshift({ 
-        code: 'S03', 
-        name: '完整利润模型', 
-        result: 'GO', 
-        score: null, 
-        executedAt: now, 
-        path: 'profit' 
-      })
-    }
-
     ElMessage.success('策略执行完成，结果已更新')
+    // Update strategy results
+    // Assuming res contains the updated strategy results list or the single result
+    if (Array.isArray(res)) {
+        strategyResults.value = res
+    } else if (res && res.code) {
+        // Update single result in list
+        const idx = strategyResults.value.findIndex(item => item.code === res.code)
+        if (idx > -1) {
+            strategyResults.value.splice(idx, 1, res)
+        } else {
+            strategyResults.value.unshift(res)
+        }
+    } else {
+        // Reload data to be sure
+        loadData(productId)
+    }
+
     activeTab.value = 'strategies'
-  }, 1500)
+  } catch (error) {
+    console.error('策略执行失败', error)
+  } finally {
+    executing.value = false
+  }
 }
 
 const handleRunStrategy = () => {

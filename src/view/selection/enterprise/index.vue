@@ -75,28 +75,25 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { Enterprise } from '@/lin/model/selection'
 
 const radarChart = ref(null)
 let chartInstance = null
 
 const profile = reactive({
-  funding_capacity: 85,
-  team_experience: 75,
-  supply_chain_depth: 70,
-  operation_capability: 80,
-  risk_tolerance: 60,
-  market_insight: 65,
-  tech_capability: 55,
-  brand_awareness: 50,
-  total_score: 70.5,
-  grade: 'C'
+  funding_capacity: 0,
+  team_experience: 0,
+  supply_chain_depth: 0,
+  operation_capability: 0,
+  risk_tolerance: 0,
+  market_insight: 0,
+  tech_capability: 0,
+  brand_awareness: 0,
+  total_score: 0,
+  grade: '-'
 })
 
-const recommendations = ref([
-    '建议提升供应链深度，增加工厂直供合作。',
-    '技术能力评分偏低，建议引入自动化数据抓取工具。',
-    '当前品牌意识处于初级阶段，在选品时应优先考虑白牌或OEM模式。'
-])
+const recommendations = ref([])
 
 const getGradeType = (grade) => {
     const map = { 'S': 'danger', 'A': 'warning', 'B': 'primary', 'C': 'success', 'D': 'info' }
@@ -160,7 +157,9 @@ const renderChart = () => {
 }
 
 const updateChart = () => {
-    // 模拟计算总分和等级
+    // 每次滑块变动只更新图表，不立即重新计算Grade，等待保存或后端返回
+    renderChart()
+    // 简单的本地预估
     const values = [
         profile.funding_capacity,
         profile.team_experience,
@@ -173,22 +172,43 @@ const updateChart = () => {
     ]
     const avg = values.reduce((a, b) => a + b, 0) / values.length
     profile.total_score = avg.toFixed(1)
-    
-    if (avg >= 90) profile.grade = 'S'
-    else if (avg >= 80) profile.grade = 'A'
-    else if (avg >= 70) profile.grade = 'B'
-    else if (avg >= 60) profile.grade = 'C'
-    else profile.grade = 'D'
-
-    renderChart()
 }
 
-const handleSave = () => {
-    ElMessage.success('企业定位评估已保存，相关策略阈值已更新')
+const loadData = async () => {
+    try {
+        const res = await Enterprise.getProfile()
+        if (res) {
+            Object.assign(profile, res)
+            // 确保图表更新
+            renderChart()
+        }
+        // 假设 recommendations 也是从 profile 接口或单独接口返回，这里暂时保留空或后端返回字段
+        if (res.recommendations) {
+            recommendations.value = res.recommendations
+        }
+    } catch (error) {
+        console.error('获取企业定位失败', error)
+        // ElMessage.warning('尚未配置企业定位，请进行首次评估')
+    }
+}
+
+const handleSave = async () => {
+    try {
+        const res = await Enterprise.createProfile(profile)
+        ElMessage.success('企业定位评估已保存，相关策略阈值已更新')
+        if (res) {
+             Object.assign(profile, res)
+             if (res.recommendations) recommendations.value = res.recommendations
+             renderChart()
+        }
+    } catch (error) {
+        console.error('保存失败', error)
+    }
 }
 
 onMounted(() => {
     initChart()
+    loadData()
     window.addEventListener('resize', () => chartInstance?.resize())
 })
 

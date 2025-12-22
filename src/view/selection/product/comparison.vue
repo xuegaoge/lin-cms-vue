@@ -37,33 +37,40 @@
     <div class="card recommendation-card">
         <div class="card-header">系统辅助建议</div>
         <div class="suggestion-content">
-            <p>基于当前 {{ selectedProducts.length }} 个产品的对比分析：</p>
-            <el-alert title="建议优先立项「瑜伽垫 Pro」，其在ROI和市场潜力指标上均处于领先地位。" type="success" show-icon :closable="false" />
-            <el-alert title="「智能加湿器」虽然评分尚可，但其盈亏平衡销量较高，建议作为P2备选。" type="info" show-icon :closable="false" />
+            <p v-if="selectedProducts.length > 0">基于当前 {{ selectedProducts.length }} 个产品的对比分析：</p>
+            <el-alert v-if="selectedProducts.length > 0" title="建议优先立项综合评分最高的产品，并在风险指标可控的前提下推进。" type="success" show-icon :closable="false" />
+            <el-empty v-else description="请添加产品进行对比" />
         </div>
     </div>
+
+    <!-- 选择产品弹窗 -->
+    <el-dialog v-model="dialogVisible" title="选择产品" width="600px">
+        <el-table :data="productList" @selection-change="handleSelectionChange" height="400">
+            <el-table-column type="selection" width="55" />
+            <el-table-column property="productName" label="产品名称" />
+            <el-table-column property="asin" label="ASIN" width="150" />
+            <el-table-column property="score" label="评分" width="100" />
+        </el-table>
+        <template #footer>
+            <span class="dialog-footer">
+                <el-button @click="dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="confirmSelection">确定</el-button>
+            </span>
+        </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { Comparison, Product } from '@/lin/model/selection'
+import { ElMessage } from 'element-plus'
 
-const selectedProducts = ref([
-    { id: 1, name: '瑜伽垫 Pro', asin: 'B08XXXXXXX' },
-    { id: 2, name: '智能加湿器', asin: 'B09YYYYYYY' },
-    { id: 4, name: '折叠野营桌', asin: 'B05AAAAAAA' }
-])
-
-const comparisonData = ref([
-    { metric: '所属类目', 1: '运动户外', 2: '家居', 4: '户外家具' },
-    { metric: '综合评分', 1: 85.5, 2: 72.0, 4: 65.8 },
-    { metric: '月搜索量', 1: '52,000', 2: '35,000', 4: '18,500' },
-    { metric: '预估毛利率', 1: '38.5%', 2: '32.0%', 4: '29.5%' },
-    { metric: '预估ROI', 1: '125%', 2: '95%', 4: '88%' },
-    { metric: 'BSR 头部集中度', 1: '45%', 2: '58%', 4: '52%' },
-    { metric: '供应链稳定性', 1: '高', 2: '中', 4: '高' },
-    { metric: '最终决策', 1: 'GO', 2: 'WAIT', 4: 'WAIT' }
-])
+const selectedProducts = ref([])
+const comparisonData = ref([])
+const dialogVisible = ref(false)
+const productList = ref([])
+const selection = ref([])
 
 const getScoreColor = (score) => {
     if (score >= 80) return '#67c23a'
@@ -78,15 +85,58 @@ const cellStyle = ({ row, column, rowIndex, columnIndex }) => {
 
 const removeProduct = (id) => {
     selectedProducts.value = selectedProducts.value.filter(p => p.id !== id)
+    fetchComparison()
 }
 
-const handleAddProduct = () => {
-    // 弹窗选择产品逻辑
+const handleAddProduct = async () => {
+    dialogVisible.value = true
+    try {
+        // Fetch simplified product list for selection
+        // Assuming getProducts supports simplified result or pagination
+        const res = await Product.getProducts({ count: 100 }) // Fetch reasonable amount
+        productList.value = res.items || res
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const confirmSelection = () => {
+    // Add selected products to selectedProducts list, avoiding duplicates
+    selection.value.forEach(item => {
+        if (!selectedProducts.value.find(p => p.id === item.id)) {
+            selectedProducts.value.push({ id: item.id, name: item.productName, asin: item.asin })
+        }
+    })
+    dialogVisible.value = false
+    fetchComparison()
+}
+
+const handleSelectionChange = (val) => {
+    selection.value = val
+}
+
+const fetchComparison = async () => {
+    if (selectedProducts.value.length === 0) {
+        comparisonData.value = []
+        return
+    }
+    const ids = selectedProducts.value.map(p => p.id)
+    try {
+        const res = await Comparison.createComparison({ productIds: ids })
+        comparisonData.value = res.metrics || res // Adjust based on API response
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 const handleExport = () => {
-    // 导出逻辑
+    ElMessage.info('导出功能开发中')
 }
+
+// Initial load (optional, or empty)
+onMounted(() => {
+    // selectedProducts could be init from query params or empty
+})
 </script>
 
 <style lang="scss" scoped>

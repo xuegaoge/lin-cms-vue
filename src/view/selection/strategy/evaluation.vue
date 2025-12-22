@@ -75,9 +75,11 @@ import { ref, onMounted, reactive } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import { Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
 const route = useRoute()
+const loading = ref(false)
 
 const handleBack = () => {
   const productId = route.query.productId
@@ -90,28 +92,22 @@ const handleBack = () => {
 
 const mpsfChart = ref(null)
 let chartInstance = null
-const executed = ref(true)
+const executed = ref(false)
+const resultData = ref(null)
 
-const summary = [
-    { label: '综合评分', value: '85.5', desc: '超越 92% 的库内产品', class: 'primary' },
-    { label: '决策建议', value: 'GO', desc: '符合 B 级企业立项阈值', class: 'success' },
-    { label: '核心优势', value: '毛利率 (42%)', desc: '远高于类目平均 28%', class: 'warning' },
-    { label: '首要风险', value: '知识产权', desc: '外观专利侵权概率中等', class: 'danger' }
-]
+const summary = ref([
+    { label: '综合评分', value: '-', desc: '等待评估', class: 'primary' },
+    { label: '决策建议', value: '-', desc: '等待评估', class: 'success' },
+    { label: '核心优势', value: '-', desc: '-', class: 'warning' },
+    { label: '首要风险', value: '-', desc: '-', class: 'danger' }
+])
 
-const details = [
-    { layer: '市场 (M)', metric: '月搜索量', value: '52,000', score: 90, remark: '市场空间充足' },
-    { layer: '市场 (M)', metric: '搜索增长率', value: '15%', score: 75, remark: '平稳增长' },
-    { layer: '产品 (P)', metric: '平均评分', value: '4.1', score: 85, remark: '存在痛点改进机会' },
-    { layer: '产品 (P)', metric: '新品占比', value: '25%', score: 95, remark: '对新人友好' },
-    { layer: '供应 (S)', metric: '交期稳定性', value: '良好', score: 70, remark: '需进一步考察工厂' },
-    { layer: '财务 (F)', metric: '预估ROI', score: 92, value: '35%', remark: '非常优秀' }
-]
+const details = ref([])
 
 const getLayerType = (layer) => {
-    if (layer.includes('市场')) return 'primary'
-    if (layer.includes('产品')) return 'success'
-    if (layer.includes('供应')) return 'warning'
+    if (layer.includes('市场') || layer.includes('Market')) return 'primary'
+    if (layer.includes('产品') || layer.includes('Product')) return 'success'
+    if (layer.includes('供应') || layer.includes('Supply')) return 'warning'
     return 'danger'
 }
 
@@ -121,8 +117,11 @@ const getScoreClass = (score) => {
     return 'score-low'
 }
 
-const initChart = () => {
+const initChart = (scores = [0, 0, 0, 0]) => {
     if (!mpsfChart.value) return
+    if (chartInstance) {
+        chartInstance.dispose()
+    }
     chartInstance = echarts.init(mpsfChart.value)
     const option = {
         radar: {
@@ -136,7 +135,7 @@ const initChart = () => {
         series: [{
             type: 'radar',
             data: [{
-                value: [88, 82, 70, 92],
+                value: scores,
                 name: '得分分布',
                 areaStyle: { color: 'rgba(64, 158, 255, 0.3)' }
             }]
@@ -145,12 +144,77 @@ const initChart = () => {
     chartInstance.setOption(option)
 }
 
-const handleExecute = () => {
-    ElMessage.success('正在执行四层评估策略...')
+const handleExecute = async () => {
+    const productId = route.query.productId
+    if (!productId) return
+    loading.value = true
+    try {
+        const res = await Strategy.execute('S01', productId)
+        processResult(res)
+        ElMessage.success('S01 策略评估完成')
+    } catch (e) {
+        console.error(e)
+    } finally {
+        loading.value = false
+    }
+}
+
+const processResult = (res) => {
+    executed.value = true
+    resultData.value = res
+    
+    // Summary
+    summary.value[0].value = res.score
+    summary.value[0].desc = '基于 MPSF 模型'
+    summary.value[1].value = res.result
+    
+    // Parsing details from result.resultData (assuming JSON)
+    let extraData = {}
+    if (res.resultData && typeof res.resultData === 'string') {
+        try { extraData = JSON.parse(res.resultData) } catch(e){}
+    } else if (res.resultData) {
+        extraData = res.resultData
+    }
+
+    // Chart scores
+    const scores = [
+        extraData.marketScore || 0,
+        extraData.productScore || 0,
+        extraData.supplyScore || 0,
+        extraData.financeScore || 0
+    ]
+    initChart(scores)
+
+    // Details table
+    if (extraData.details) {
+        details.value = extraData.details
+    }
+    
+    if (extraData.advantage) {
+         summary.value[2].value = extraData.advantage.title
+         summary.value[2].desc = extraData.advantage.desc
+    }
+    if (extraData.risk) {
+         summary.value[3].value = extraData.risk.title
+         summary.value[3].desc = extraData.risk.desc
+    }
+}
+
+const loadData = async () => {
+    // Ideally get existing execution result
+    // Strategy.getExecution('S01', productId) - if API supports
+    // For now, auto-execute or just init chart
+    const productId = route.query.productId
+    // Maybe try to fetch last result? Or just wait for user to click execute?
+    // Let's execute on load if route query says so, or just init chart
+    initChart([0,0,0,0])
+    if (productId && route.query.autoRun) {
+        handleExecute()
+    }
 }
 
 onMounted(() => {
-    initChart()
+    loadData()
     window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>

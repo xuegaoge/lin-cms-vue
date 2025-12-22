@@ -32,38 +32,63 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
+import { Trends } from '@/lin/model/selection'
 
+const route = useRoute()
 const lineChart = ref(null)
 let chartInstance = null
 
-const signals = [
-    { date: '2025-12-15', metric: 'BSR 排名', change: '+150%', desc: '排名突降，疑似竞品开启大额促销。' },
-    { date: '2025-12-18', metric: '搜索量', change: '-20%', desc: '类目大盘流量整体回落。' }
-]
+const signals = ref([])
 
-const initChart = () => {
+const loadData = async () => {
+    const productId = route.params.id
+    if (!productId) return
+
+    try {
+        const res = await Trends.getTrends(productId, { days: 30 })
+        // Assume res structure: { dates: [], sales: [], prices: [], ranks: [], signals: [] }
+        if (res) {
+            if (res.signals) signals.value = res.signals
+            initChart(res)
+        }
+    } catch (e) {
+        console.error('Failed to load trends', e)
+        // Fallback or empty chart
+        initChart(null)
+    }
+}
+
+const initChart = (data) => {
     if (!lineChart.value) return
     chartInstance = echarts.init(lineChart.value)
+    
+    // Default or API data
+    const dates = data?.dates || []
+    const sales = data?.sales || []
+    const prices = data?.prices || []
+    const ranks = data?.ranks || []
+
     const option = {
         tooltip: { trigger: 'axis' },
         legend: { data: ['日销量', '平均价格', 'BSR 排名 (逆序)'] },
-        xAxis: { type: 'category', data: ['12-01', '12-05', '12-10', '12-15', '12-20', '12-22'] },
+        xAxis: { type: 'category', data: dates },
         yAxis: [
             { type: 'value', name: '销量/价格' },
             { type: 'value', name: 'BSR 排名', inverse: true }
         ],
         series: [
-            { name: '日销量', type: 'line', data: [120, 135, 125, 150, 145, 160], smooth: true },
-            { name: '平均价格', type: 'line', data: [39.99, 39.99, 38.5, 38.5, 39.99, 39.99], smooth: true },
-            { name: 'BSR 排名 (逆序)', type: 'line', yAxisIndex: 1, data: [1200, 1100, 1150, 980, 1050, 950], smooth: true }
+            { name: '日销量', type: 'line', data: sales, smooth: true },
+            { name: '平均价格', type: 'line', data: prices, smooth: true },
+            { name: 'BSR 排名 (逆序)', type: 'line', yAxisIndex: 1, data: ranks, smooth: true }
         ]
     }
     chartInstance.setOption(option)
 }
 
 onMounted(() => {
-    initChart()
+    loadData()
     window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>

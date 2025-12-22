@@ -71,8 +71,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Approval } from '@/lin/model/selection'
 
 const activeTab = ref('pending')
 const dialogVisible = ref(false)
@@ -83,35 +84,64 @@ const approveForm = reactive({
     comment: ''
 })
 
-const pendingApprovals = ref([
-    { id: 101, productName: '瑜伽垫 Pro', asin: 'B08XXXXXXX', submitter: '王小二', submitTime: '2025-12-21 14:00', currentStage: '产品部审核' },
-    { id: 102, productName: '户外电源', asin: 'B07YYYYYYY', submitter: '李大牛', submitTime: '2025-12-22 09:30', currentStage: '财务部审核' }
-])
-
-const myApprovals = ref([
-    { id: 201, productName: '智能加湿器', asin: 'B09ZZZZZZZ', status: '进行中', startTime: '2025-12-20' },
-    { id: 202, productName: '折叠野营桌', status: '已通过', startTime: '2025-12-15' }
-])
+const pendingApprovals = ref([])
+const myApprovals = ref([])
 
 const getStatusType = (status) => {
-    return status === '已通过' ? 'success' : 'warning'
+    return status === '已通过' || status === 'Pass' ? 'success' : 'warning'
+}
+
+const fetchPending = async () => {
+    try {
+        const res = await Approval.getPending()
+        pendingApprovals.value = res.items || res
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const fetchHistory = async () => {
+    try {
+        const res = await Approval.getHistory()
+        myApprovals.value = res.items || res
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 const handleApprove = (row) => {
     selectedRow.value = row
+    approveForm.result = 'pass'
+    approveForm.comment = ''
     dialogVisible.value = true
 }
 
 const handleDetail = (row) => {
     console.log('Detail', row)
+    // 可以跳转到产品详情页
+    // router.push(`/selection/product/${row.productId}`)
 }
 
-const submitApprove = () => {
-    ElMessage.success('审批操作成功')
-    dialogVisible.value = false
-    // 移除已审批项
-    pendingApprovals.value = pendingApprovals.value.filter(item => item.id !== selectedRow.value.id)
+const submitApprove = async () => {
+    if (!selectedRow.value) return
+    try {
+        await Approval.approve(selectedRow.value.id, approveForm)
+        ElMessage.success('审批操作成功')
+        dialogVisible.value = false
+        fetchPending() // Refresh list
+    } catch (e) {
+        console.error(e)
+    }
 }
+
+watch(activeTab, (val) => {
+    if (val === 'pending') fetchPending()
+    else fetchHistory()
+})
+
+onMounted(() => {
+    fetchPending()
+})
 </script>
 
 <style lang="scss" scoped>
