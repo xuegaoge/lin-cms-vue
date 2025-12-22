@@ -3,7 +3,7 @@
     <div class="header">
       <div class="title">S18: 极端环境压力测试</div>
       <div class="actions">
-        <el-button @click="$router.back()">返回</el-button>
+        <el-button @click="handleBack">返回</el-button>
         <el-button type="danger" @click="handleTest">开始测试</el-button>
       </div>
     </div>
@@ -47,6 +47,19 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+
+const handleBack = () => {
+  const productId = route.query.productId
+  if (productId) {
+    router.push({ path: `/selection/product/${productId}`, query: { tab: 'strategies' } })
+  } else {
+    router.back()
+  }
+}
 
 const tested = ref(false)
 const scenarios = reactive({

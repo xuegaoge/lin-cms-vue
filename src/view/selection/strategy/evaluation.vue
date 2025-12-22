@@ -3,7 +3,7 @@
     <div class="header">
       <div class="title">S01: 四层评估体系 (MPSF)</div>
       <div class="actions">
-        <el-button @click="$router.back()">返回</el-button>
+        <el-button @click="handleBack">返回</el-button>
         <el-button type="primary" @click="handleExecute">运行评估</el-button>
       </div>
     </div>
@@ -74,6 +74,19 @@
 import { ref, onMounted, reactive } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+
+const handleBack = () => {
+  const productId = route.query.productId
+  if (productId) {
+    router.push({ path: `/selection/product/${productId}`, query: { tab: 'strategies' } })
+  } else {
+    router.back()
+  }
+}
 
 const mpsfChart = ref(null)
 let chartInstance = null

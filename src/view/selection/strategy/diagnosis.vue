@@ -3,7 +3,7 @@
     <div class="header">
       <div class="title">S02: 40题自诊系统</div>
       <div class="actions">
-        <el-button @click="$router.back()">返回</el-button>
+        <el-button @click="handleBack">返回</el-button>
         <el-button type="primary" @click="handleSubmit">提交诊断</el-button>
       </div>
     </div>
@@ -68,6 +68,19 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+
+const handleBack = () => {
+  const productId = route.query.productId
+  if (productId) {
+    router.push({ path: `/selection/product/${productId}`, query: { tab: 'strategies' } })
+  } else {
+    router.back()
+  }
+}
 
 const activeNames = ref([0])
 const submitted = ref(false)

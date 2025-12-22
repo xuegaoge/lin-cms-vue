@@ -262,12 +262,18 @@
             <el-table :data="strategyResults" border style="width: 100%" v-if="strategyResults.length > 0">
               <el-table-column prop="code" label="策略编号" width="100" />
               <el-table-column prop="name" label="策略名称" width="200" />
+              <el-table-column prop="result" label="决策建议" width="150" align="center">
+                <template #default="scope">
+                  <el-tag :type="getDecisionTagType(scope.row)" effect="light">
+                    {{ getDecisionText(scope.row) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
               <el-table-column prop="score" label="评分/结果" width="120">
                 <template #default="scope">
-                  <span v-if="scope.row.score" :style="{ color: getScoreColor(scope.row.score), fontWeight: 'bold' }">
-                    {{ scope.row.score }} 分
-                  </span>
-                  <el-tag v-else :type="scope.row.result === 'GO' ? 'success' : 'warning'">{{ scope.row.result }}</el-tag>
+                  <el-tag :type="getDecisionTagType(scope.row)" effect="plain">
+                    {{ scope.row.score ? scope.row.score + ' 分' : scope.row.result }}
+                  </el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="executedAt" label="执行时间" width="180" />
@@ -337,7 +343,24 @@ const executionType = ref('all')
 const strategyResults = ref([
   { code: 'S01', name: '四层评估体系', score: 85.5, executedAt: '2025-12-21 14:30', path: 'evaluation' },
   { code: 'S02', name: '40题自诊系统', score: 320, executedAt: '2025-12-21 14:35', path: 'diagnosis' },
-  { code: 'S03', name: '完整利润模型', result: 'GO', score: null, executedAt: '2025-12-21 14:40', path: 'profit' }
+  { code: 'S03', name: '完整利润模型', result: 'GO', score: null, executedAt: '2025-12-21 14:40', path: 'profit' },
+  { code: 'S04', name: '36项风险预警', result: 'HIGH', score: null, executedAt: '2025-12-21 14:45', path: 'risk' },
+  { code: 'S05', name: '11维度评估', score: 72, executedAt: '2025-12-21 14:46', path: 'scoring', query: { code: 'S05' } },
+  { code: 'S06', name: '五维选品模型', score: 88, executedAt: '2025-12-21 14:47', path: 'scoring', query: { code: 'S06' } },
+  { code: 'S07', name: '赛道市场评估', score: 65, executedAt: '2025-12-21 14:48', path: 'scoring', query: { code: 'S07' } },
+  { code: 'S08', name: 'TOP20策略套利库', result: '推荐', score: null, executedAt: '2025-12-21 14:50', path: 'top20' },
+  { code: 'S09', name: '蓝海深度识别', score: 85, executedAt: '2025-12-21 14:55', path: 'blue-ocean' },
+  { code: 'S10', name: '赛道热度评级', score: 80, executedAt: '2025-12-21 14:56', path: 'scoring', query: { code: 'S10' } },
+  { code: 'S11', name: '企业定位评估', score: 420, executedAt: '2025-12-21 14:57', path: '../enterprise' },
+  { code: 'S12', name: 'A9算法指标库', score: 78, executedAt: '2025-12-21 14:58', path: 'scoring', query: { code: 'S12' } },
+  { code: 'S13', name: '爆点识别引擎', result: 'HIGH', score: null, executedAt: '2025-12-21 15:00', path: 'explosive' },
+  { code: 'S14', name: '20节点决策树', result: 'FAIL', score: null, executedAt: '2025-12-21 15:01', path: 'decision-tree' },
+  { code: 'S15', name: '竞品分析矩阵', result: '完成', score: null, executedAt: '2025-12-21 15:02', path: 'competitor' },
+  { code: 'S16', name: '供应链评估', score: 92, executedAt: '2025-12-21 15:03', path: 'scoring', query: { code: 'S16' } },
+  { code: 'S17', name: '6大创新矩阵', score: 78, executedAt: '2025-12-21 15:05', path: 'innovation' },
+  { code: 'S18', name: '压力测试系统', result: '85%', score: null, executedAt: '2025-12-21 15:06', path: 'stress-test' },
+  { code: 'S19', name: '关键词研究策略', score: 68, executedAt: '2025-12-21 15:07', path: 'scoring', query: { code: 'S19' } },
+  { code: 'S20', name: '市场趋势分析', score: 82, executedAt: '2025-12-21 15:08', path: 'scoring', query: { code: 'S20' } },
 ])
 
 const form = reactive({
@@ -458,6 +481,61 @@ const handleRunStrategy = () => {
     dialogVisible.value = true
 }
 
+const getDecisionText = (row) => {
+    const code = row.code
+    const result = row.result ? String(row.result).toUpperCase() : ''
+
+    // 通用的 GO/WAIT/STOP 翻译 (适用于 S01, S03 等)
+    if (result === 'GO') return '盈利达标'
+    if (result === 'WAIT') return '利润待优化'
+    if (result === 'STOP') return '亏损风险'
+
+    // S13 爆点识别
+    if (code === 'S13') {
+        if (result.includes('HIGH')) return '高爆款潜力'
+        if (result.includes('LOW')) return '潜力不足'
+    }
+    // S14 决策树
+    if (code === 'S14') {
+        if (result.includes('PASS')) return '校验通过'
+        if (result.includes('FAIL')) return '校验失败'
+    }
+    // S04 风险预警
+    if (code === 'S04') {
+        if (result.includes('HIGH')) return '高风险'
+        if (result.includes('MEDIUM')) return '中风险'
+        if (result.includes('LOW')) return '低风险'
+    }
+    // S18 压力测试
+    if (code === 'S18') {
+         if (result.includes('%')) return '生存率 ' + result
+         if (result.includes('PASS') || parseInt(result) > 60) return '抗压极佳'
+         return '风险较大'
+    }
+
+    if (row.result) return row.result
+    if (!row.score) return '-'
+    if (row.score >= 90) return 'S级 (极佳)'
+    if (row.score >= 80) return 'A级 (优秀)'
+    if (row.score >= 60) return 'B级 (良好)'
+    return 'C级 (淘汰)'
+}
+
+const getDecisionTagType = (row) => {
+    const text = String(getDecisionText(row)).toLowerCase()
+    const code = row.code || ''
+    
+    // 风险类或否定类逻辑特判
+    if (code === 'S04' || code === 'S18' || code === 'S14') {
+        if (text.includes('high') || text.includes('fail') || text.includes('风险') || text.includes('淘汰') || text.includes('失败')) return 'danger'
+        if (text.includes('通过') || text.includes('极佳') || text.includes('安全')) return 'success'
+    }
+
+    if (text.includes('go') || text.includes('达标') || text.includes('s级') || text.includes('a级') || text.includes('推荐') || text.includes('high') || text.includes('pass') || text.includes('完成') || text.includes('安全') || text.includes('潜力')) return 'success'
+    if (text.includes('wait') || text.includes('优化') || text.includes('b级') || text.includes('中') || text.includes('一般') || text.includes('不足')) return 'warning'
+    return 'danger'
+}
+
 const getScoreColor = (score) => {
     if (score >= 90 || score >= 300) return '#67c23a'
     if (score >= 75 || score >= 240) return '#e6a23c'
@@ -465,10 +543,19 @@ const getScoreColor = (score) => {
 }
 
 const goToStrategyDetail = (row) => {
-    router.push({
-        path: `/selection/strategy/${row.path}`,
-        query: { productId: route.params.id, code: row.code }
-    })
+    let path = row.path
+    if (!path.startsWith('../')) {
+        path = `/selection/strategy/${path}`
+    } else {
+        path = path.replace('../', '/selection/')
+    }
+
+    const query = { productId: route.params.id, code: row.code }
+    if (row.query) {
+        Object.assign(query, row.query)
+    }
+
+    router.push({ path, query })
 }
 
 const refreshStrategies = () => {
