@@ -1,4 +1,5 @@
 import adminConfig from './admin'
+import selectionConfig from './selection'
 import pluginsConfig from './plugin'
 import Utils from '@/lin/util/util'
 
@@ -33,6 +34,7 @@ let homeRouter = [
     icon: 'iconfont icon-rizhiguanli',
   },
   adminConfig,
+  selectionConfig,
 ]
 
 // 接入插件

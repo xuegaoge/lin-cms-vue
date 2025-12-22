@@ -3,7 +3,7 @@
     <div class="team-name hidden-sm-and-down"><img src="@/assets/image/login/team-name.png" alt="logo" /></div>
     <div class="form-box" v-loading="loading" element-loading-background="rgba(0, 0, 0, 0)">
       <div class="title">
-        <h1 title="Lin">Lin CMS</h1>
+        <h1 title="Selection">选品决策系统</h1>
       </div>
       <form class="login-form" autocomplete="off" @submit.prevent="throttleLogin()">
         <div class="form-item nickname">
