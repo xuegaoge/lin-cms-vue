@@ -132,10 +132,13 @@ const processResult = (res) => {
     // 根据 Warnings 将对应 code 的节点设为 Fail
     if (res.warnings) {
         res.warnings.forEach(warn => {
-            const code = warn.split(':')[0].trim() // 提取 "N06"
+            // 模糊匹配：只要警告文本中包含节点编号（如 N06），就标记为 Fail
             nodes.value.forEach(group => {
-                const node = group.items.find(n => n.code === code)
-                if (node) node.status = 'Fail'
+                group.items.forEach(node => {
+                    if (warn.includes(node.code)) {
+                        node.status = 'Fail'
+                    }
+                })
             })
         })
     }

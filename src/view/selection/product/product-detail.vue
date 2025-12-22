@@ -547,7 +547,7 @@ const getStrategyPath = (code) => {
         'S12': 'scoring',
         'S13': 'explosive',
         'S14': 'decision-tree',
-        'S15': 'competitor',
+        'S15': 'competitor-analysis',
         'S16': 'scoring',
         'S17': 'innovation',
         'S18': 'stress-test',
@@ -719,10 +719,11 @@ const getDecisionText = (row) => {
 
     if (row.result) return row.result
     if (!row.score) return '-'
-    if (row.score >= 90) return 'S级 (极佳)'
-    if (row.score >= 80) return 'A级 (优秀)'
-    if (row.score >= 60) return 'B级 (良好)'
-    return 'C级 (淘汰)'
+    if (row.score >= 85) return 'S级 (极佳)'
+    if (row.score >= 70) return 'A级 (优秀)'
+    if (row.score >= 55) return 'B级 (良好)'
+    if (row.score >= 40) return 'C级 (及格)'
+    return 'D级 (淘汰)'
 }
 
 const getDecisionTagType = (row) => {

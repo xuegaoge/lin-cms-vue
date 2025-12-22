@@ -112,7 +112,12 @@ const initWaterfall = (data) => {
                 name: '金额',
                 type: 'bar',
                 stack: 'Total',
-                label: { show: true, position: 'inside' },
+                label: { 
+                    show: true, 
+                    position: 'inside',
+                    formatter: (p) => p.value.toFixed(2),
+                    fontSize: 10 
+                },
                 data: amountData
             }
         ]
@@ -176,13 +181,13 @@ const processResult = (res) => {
     // 优先从 Finance 字段获取，其次直接从 root 获取
     const finData = details.Finance || details.finance || details
 
-    finance.price = finData.TargetPrice || finData.target_price || finData.price || 0
-    finance.margin = finData.NetProfitMargin || finData.net_profit_margin || finData.margin || 0
-    finance.roi = finData.Roi || finData.roi || 0
-    finance.breakeven = finData.BreakEvenSales || finData.break_even_sales || finData.breakeven || 0
-    finance.payback = finData.PaybackPeriod || finData.payback_period || finData.payback || 0
-    finance.annualRoi = finData.AnnualRoi || finData.annual_roi || finData.annualRoi || 0
-    finance.netProfit = finData.NetProfit || finData.net_profit || finData.netProfit || 0
+    finance.price = Number(finData.TargetPrice || finData.target_price || finData.price || 0).toFixed(2)
+    finance.margin = (Number(finData.NetProfitMargin || finData.net_profit_margin || finData.margin || 0) * 100).toFixed(2)
+    finance.roi = (Number(finData.Roi || finData.roi || 0) * 100).toFixed(2)
+    finance.breakeven = Number(finData.BreakEvenSales || finData.break_even_sales || finData.breakeven || 0).toFixed(0)
+    finance.payback = Number(finData.PaybackPeriod || finData.payback_period || finData.payback || 0).toFixed(1)
+    finance.annualRoi = (Number(finData.AnnualRoi || finData.annual_roi || finData.annualRoi || 0) * 100).toFixed(2)
+    finance.netProfit = Number(finData.NetProfit || finData.net_profit || finData.netProfit || 0).toFixed(2)
 
     // 3. 处理瀑布图数据
     const waterfallData = details.Waterfall || details.waterfall

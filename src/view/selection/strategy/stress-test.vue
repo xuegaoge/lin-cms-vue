@@ -53,6 +53,8 @@ import { Strategy } from '@/lin/model/selection'
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
+const tested = ref(false)
+const resultData = ref(null)
 
 const handleBack = () => {
   const productId = route.query.productId
@@ -63,7 +65,6 @@ const handleBack = () => {
   }
 }
 
-const tested = ref(false)
 const scenarios = reactive({
   priceDrop: 20,
   shippingRise: 50,
@@ -77,40 +78,54 @@ const handleTest = async () => {
   if (!productId) return
   
   loading.value = true
-  // ElMessage.warning('正在进行高强度压力模拟...')
   
   try {
-      const res = await Strategy.execute('S18', productId, { scenarios })
+      // 传递自定义场景参数 (虽然目前后端可能主要跑固定场景，但预留接口)
+      const res = await Strategy.execute('S18', productId, { scenarios: scenarios })
       processResult(res)
   } catch (e) {
       console.error(e)
+      ElMessage.error('压力测试执行失败')
   } finally {
       loading.value = false
   }
 }
 
 const processResult = (res) => {
-  executed.value = true
-  resultData.value = res
+  // 兼容 axios 拦截器处理
+  const data = res.data || res
   
-  if (res.detail_json) {
-    let data = typeof res.detail_json === 'string' ? JSON.parse(res.detail_json) : res.detail_json
-    
-    // 假设后端返回生存率 score 和 各场景数据
-    survivalRate.value = res.score || 0
-    scenarios.value = data.scenarios || []
-    
-    initChart()
-  } else if (res.sub_results) {
-      // 兼容 sub_results 模式
-      survivalRate.value = res.score || 0
-      scenarios.value = res.sub_results.map(s => ({
-          name: s.name,
-          impact: s.score,
-          status: s.score > 60 ? 'Pass' : 'Fail',
-          suggestion: s.indicators ? s.indicators[0]?.calculation : ''
+  tested.value = true
+  resultData.value = data
+  
+  // 尝试解析 DetailJson
+  let indicators = []
+  if (data.detail_json || data.DetailJson) {
+      try {
+        const raw = data.detail_json || data.DetailJson
+        const detail = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (detail.Indicators) {
+            indicators = detail.Indicators
+        }
+      } catch(e) { console.error('Parse DetailJson failed', e) }
+  } 
+  
+  // 如果 DetailJson 没有，尝试从 SubResults 获取 (API 可能不同版本返回不同结构)
+  if (indicators.length === 0 && (data.sub_results || data.SubResults)) {
+      indicators = data.sub_results || data.SubResults
+  }
+
+  // 映射到前端结果
+  if (indicators.length > 0) {
+      results.value = indicators.map(ind => ({
+          name: ind.Name || ind.name,
+          profit: Number(ind.Value !== undefined ? ind.Value : (ind.raw_value || 0)).toFixed(2),
+          status: (ind.Status || ind.status || 'FAIL').toLowerCase(),
+          desc: ind.Calculation || ''
       }))
-      initChart()
+  } else {
+      // 兜底模拟数据 (防止页面空白)
+      results.value = []
   }
 }
 

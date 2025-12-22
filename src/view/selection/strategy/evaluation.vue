@@ -62,9 +62,10 @@
             sub-title="该产品在市场空间和毛利率方面表现极佳，虽供应链稳定性稍弱，但整体风险可控。"
         >
         </el-result>
-        <div class="suggestion-list">
-             <el-alert title="市场风险：头部品牌占比55%，接近红线，建议通过差异化设计切入长尾市场。" type="warning" show-icon :closable="false" />
-             <el-alert title="财务机会：预期ROI可达35%，远超B级企业标准，资金利用效率高。" type="success" show-icon :closable="false" />
+        <div class="suggestion-list" v-if="resultData">
+             <el-alert v-for="(warn, idx) in resultData.warnings" :key="'w'+idx" :title="warn" type="warning" show-icon :closable="false" />
+             <el-alert v-for="(sug, idx) in resultData.suggestions" :key="'s'+idx" :title="sug" type="success" show-icon :closable="false" />
+             <el-empty v-if="(!resultData.warnings || resultData.warnings.length === 0) && (!resultData.suggestions || resultData.suggestions.length === 0)" description="暂无特别建议"></el-empty>
         </div>
     </div>
   </div>
@@ -210,15 +211,58 @@ const processResult = (res) => {
 }
 
 const loadData = async () => {
-    // Ideally get existing execution result
-    // Strategy.getExecution('S01', productId) - if API supports
-    // For now, auto-execute or just init chart
     const productId = route.query.productId
-    // Maybe try to fetch last result? Or just wait for user to click execute?
-    // Let's execute on load if route query says so, or just init chart
-    initChart([0,0,0,0])
-    if (productId && route.query.autoRun) {
-        handleExecute()
+    if (!productId) {
+        initChart([0,0,0,0])
+        return
+    }
+
+    try {
+        // 尝试获取历史记录
+        const res = await Strategy.getExecutionHistory(productId, 'S01')
+        const history = res.data || res
+        // 找到最新的 S01 记录
+        const latestInfo = Array.isArray(history) ? history.find(h => h.is_latest) || history[0] : (history.items && history.items[0])
+        
+        if (latestInfo) {
+            // 如果有历史记录，直接显示
+            // 注意：API 返回的历史记录字段可能全是下划线，也可能是驼峰，需要适配
+            // 这里假设 processResult 能处理通用结构，或者我们需要转换一下
+            // processResult 期望的是 Strategy.execute 返回的结构，通常包含 sub_results / detail_json
+            
+            // 为了保险，如果字段不全，可以考虑只 update summary，或者重新 execute
+            // 这里我们尝试复用 processResult
+            
+            // 构造兼容 processResult 的对象
+            const compatibleRes = {
+                score: latestInfo.score,
+                grade: latestInfo.grade,
+                decision: latestInfo.decision,
+                reason: latestInfo.reason,
+                sub_results: latestInfo.subResults || (latestInfo.sub_results_json ? JSON.parse(latestInfo.sub_results_json) : []),
+                suggestions: latestInfo.suggestions || (latestInfo.suggestions_json ? JSON.parse(latestInfo.suggestions_json) : []),
+                warnings: latestInfo.warnings || (latestInfo.warnings_json ? JSON.parse(latestInfo.warnings_json) : [])
+            }
+            
+            // 如果 sub_results 为空 (可能 history api 没返回完整 json)，则尝试解析 detail_json
+            if ((!compatibleRes.sub_results || compatibleRes.sub_results.length === 0) && latestInfo.detail_json) {
+                try {
+                     const detail = JSON.parse(latestInfo.detail_json)
+                     if (detail.sub_results) compatibleRes.sub_results = detail.sub_results
+                } catch(e){}
+            }
+
+            processResult(compatibleRes)
+        } else {
+             // 无历史记录，仅初始化
+             initChart([0,0,0,0])
+             if (route.query.autoRun) {
+                handleExecute()
+             }
+        }
+    } catch (e) {
+        console.error('Failed to load history', e)
+        initChart([0,0,0,0])
     }
 }
 

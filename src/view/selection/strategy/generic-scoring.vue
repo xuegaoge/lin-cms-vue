@@ -136,8 +136,8 @@ const processResult = (res, code) => {
         suggestions: []
     }
     
-    // 优先从直接属性获取 (PascalCase & camelCase)
-    const subResults = res.subResults || res.SubResults
+    // 优先从直接属性获取 (PascalCase & camelCase & snake_case)
+    const subResults = res.subResults || res.SubResults || res.sub_results
     if (subResults && Array.isArray(subResults)) {
         details.dimensions = subResults.map(s => ({
             name: s.name || s.Name,
@@ -157,13 +157,13 @@ const processResult = (res, code) => {
         })
     }
 
-    // 如果维度为空，尝试解析 DetailJson
+    // 如果维度为空，尝试解析 DetailJson (兼容 detail_json)
     if (details.dimensions.length === 0) {
-        const detailJson = res.detailJson || res.DetailJson
+        const detailJson = res.detailJson || res.DetailJson || res.detail_json
         if (detailJson) {
             try {
                 const parsed = typeof detailJson === 'string' ? JSON.parse(detailJson) : detailJson
-                const pSub = parsed.subResults || parsed.SubResults || parsed.SubResults
+                const pSub = parsed.subResults || parsed.SubResults || parsed.sub_results
                 if (pSub && Array.isArray(pSub)) {
                     details.dimensions = pSub.map(s => ({
                         name: s.name || s.Name,
@@ -250,10 +250,10 @@ const getScoreType = (score) => {
 }
 
 const getScoreLevel = (score) => {
-    if (score >= 90) return 'S (极佳)'
-    if (score >= 80) return 'A (优秀)'
-    if (score >= 70) return 'B (良好)'
-    if (score >= 60) return 'C (及格)'
+    if (score >= 85) return 'S (极佳)'
+    if (score >= 70) return 'A (优秀)'
+    if (score >= 55) return 'B (良好)'
+    if (score >= 40) return 'C (及格)'
     return 'D (淘汰)'
 }
 
