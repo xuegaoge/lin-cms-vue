@@ -5,27 +5,27 @@ import _axios, { get, post, put, _delete } from '@/lin/plugin/axios'
  */
 export class Product {
   static getProducts(params) {
-    return get('api/products', params)
+    return get('api/selection/products', params)
   }
 
   static getProduct(id) {
-    return get(`api/products/${id}`)
+    return get(`api/selection/products/${id}`)
   }
 
   static createProduct(data) {
-    return post('api/products', data)
+    return post('api/selection/products', data)
   }
 
   static updateProduct(id, data) {
-    return put(`api/products/${id}`, data)
+    return put(`api/selection/products/${id}`, data)
   }
 
   static deleteProduct(id) {
-    return _delete(`api/products/${id}`)
+    return _delete(`api/selection/products/${id}`)
   }
 
   static batchDelete(ids) {
-    return _delete('api/products/batch', { ids })
+    return _delete('api/selection/products/batch', { ids })
   }
 }
 
@@ -34,15 +34,15 @@ export class Product {
  */
 export class Enterprise {
   static getProfile() {
-    return get('api/enterprise/profile')
+    return get('api/selection/enterprise/profile')
   }
 
   static createProfile(data) {
-    return post('api/enterprise/profile', data)
+    return post('api/selection/enterprise/profile', data)
   }
 
   static getHistory(params) {
-    return get('api/enterprise/profile/history', params)
+    return get('api/selection/enterprise/profile/history', params)
   }
 }
 
@@ -51,19 +51,34 @@ export class Enterprise {
  */
 export class Strategy {
   static execute(strategyCode, productId, payload = {}) {
-    return post(`api/strategies/${strategyCode}/execute`, { product_id: productId, ...payload })
+    return post(`api/selection/strategies/${strategyCode}/execute`, { product_id: productId, ...payload })
   }
 
   static executeAll(productId) {
-    return post('api/strategies/execute-all', { product_id: productId })
+    return post('api/selection/strategies/execute-all', { product_id: productId })
   }
 
   static getStrategies() {
-    return get('api/strategies')
+    return get('api/selection/strategies')
   }
 
   static submitDiagnosis(productId, answers) {
-    return post('api/strategies/S02/submit', { product_id: productId, answers })
+    return post('api/selection/strategies/S02/submit', { product_id: productId, answers })
+  }
+
+  // 新增: 获取策略执行历史
+  static getExecutionHistory(productId, params = {}) {
+    return get(`api/selection/strategies/products/${productId}/strategies`, params)
+  }
+
+  // 新增: 获取单次执行详情
+  static getExecutionDetail(executionId) {
+    return get(`api/selection/strategies/executions/${executionId}`)
+  }
+
+  // 新增: 重新执行
+  static reExecute(executionId) {
+    return post(`api/selection/strategies/executions/${executionId}/re-execute`)
   }
 }
 
@@ -72,11 +87,11 @@ export class Strategy {
  */
 export class Dashboard {
   static getBiData(params) {
-    return get('api/dashboard/bi', params)
+    return get('api/selection/dashboard/bi', params)
   }
 
   static getAlerts(params) {
-    return get('api/dashboard/alerts', params)
+    return get('api/selection/dashboard/alerts', params)
   }
 }
 
@@ -85,15 +100,15 @@ export class Dashboard {
  */
 export class Comparison {
   static createComparison(data) {
-    return post('api/comparison', data)
+    return post('api/selection/comparison', data)
   }
 
   static getComparison(id) {
-    return get(`api/comparison/${id}`)
+    return get(`api/selection/comparison/${id}`)
   }
 
   static getList(params) {
-    return get('api/comparison', params)
+    return get('api/selection/comparison', params)
   }
 }
 
@@ -102,19 +117,19 @@ export class Comparison {
  */
 export class Approval {
   static submitApproval(productId, data) {
-    return post(`api/products/${productId}/approval`, data)
+    return post(`api/selection/products/${productId}/approval`, data)
   }
 
   static approve(approvalId, data) {
-    return post(`api/approval/${approvalId}/approve`, data)
+    return post(`api/selection/approval/${approvalId}/approve`, data)
   }
 
   static getPending(params) {
-    return get('api/approval/pending', params)
+    return get('api/selection/approval/pending', params)
   }
 
   static getHistory(params) {
-    return get('api/approval/history', params)
+    return get('api/selection/approval/history', params)
   }
 }
 
@@ -123,15 +138,15 @@ export class Approval {
  */
 export class Config {
   static getConfig() {
-    return get('api/config')
+    return get('api/selection/config')
   }
 
   static updateConfig(data) {
-    return put('api/config', data)
+    return put('api/selection/config', data)
   }
 
   static getItems(group) {
-    return get(`api/config/group/${group}`)
+    return get(`api/selection/config/group/${group}`)
   }
 }
 
@@ -140,7 +155,7 @@ export class Config {
  */
 export class Trends {
   static getTrends(productId, params) {
-    return get(`api/products/${productId}/trends`, params)
+    return get(`api/selection/products/${productId}/trends`, params)
   }
 }
 
@@ -149,11 +164,11 @@ export class Trends {
  */
 export class SOP {
   static getTasks(productId) {
-    return get(`api/products/${productId}/sop`)
+    return get(`api/selection/products/${productId}/sop`)
   }
 
   static updateTask(taskId, data) {
-    return put(`api/sop/${taskId}`, data)
+    return put(`api/selection/sop/${taskId}`, data)
   }
 }
 
@@ -162,10 +177,10 @@ export class SOP {
  */
 export class Checklist {
   static getItems(productId, type) {
-    return get(`api/products/${productId}/checklist`, { type })
+    return get(`api/selection/products/${productId}/checklist`, { type })
   }
 
   static updateItem(itemId, checked) {
-    return put(`api/checklist/${itemId}`, { checked })
+    return put(`api/selection/checklist/${itemId}`, { checked })
   }
 }

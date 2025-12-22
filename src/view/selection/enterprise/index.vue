@@ -15,7 +15,7 @@
           </div>
           <div ref="radarChart" class="radar-chart"></div>
           <div class="score-summary">
-            <div class="total-score">综合得分: <span>{{ profile.total_score }}</span></div>
+            <div class="total-score">综合得分: <span>{{ profile.totalScore }}</span></div>
             <p class="description">基于 8 个维度的加权评估结果，影响所有选品策略的判定阈值。</p>
           </div>
         </div>
@@ -27,28 +27,28 @@
           <div class="card-header">评估打分</div>
           <el-form :model="profile" label-width="120px" class="score-form">
             <el-form-item label="资金实力">
-              <el-slider v-model="profile.funding_capacity" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.fundingCapacity" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="团队经验">
-              <el-slider v-model="profile.team_experience" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.teamExperience" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="供应链深度">
-              <el-slider v-model="profile.supply_chain_depth" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.supplyChainDepth" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="运营能力">
-              <el-slider v-model="profile.operation_capability" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.operationCapability" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="风险承受力">
-              <el-slider v-model="profile.risk_tolerance" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.riskTolerance" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="市场洞察">
-              <el-slider v-model="profile.market_insight" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.marketInsight" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="技术能力">
-              <el-slider v-model="profile.tech_capability" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.techCapability" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
             <el-form-item label="品牌意识">
-              <el-slider v-model="profile.brand_awareness" :min="0" :max="100" show-input @change="updateChart"></el-slider>
+              <el-slider v-model="profile.brandAwareness" :min="0" :max="100" show-input @change="updateChart"></el-slider>
             </el-form-item>
           </el-form>
         </div>
@@ -81,15 +81,15 @@ const radarChart = ref(null)
 let chartInstance = null
 
 const profile = reactive({
-  funding_capacity: 0,
-  team_experience: 0,
-  supply_chain_depth: 0,
-  operation_capability: 0,
-  risk_tolerance: 0,
-  market_insight: 0,
-  tech_capability: 0,
-  brand_awareness: 0,
-  total_score: 0,
+  fundingCapacity: 0,
+  teamExperience: 0,
+  supplyChainDepth: 0,
+  operationCapability: 0,
+  riskTolerance: 0,
+  marketInsight: 0,
+  techCapability: 0,
+  brandAwareness: 0,
+  totalScore: 0,
   grade: '-'
 })
 
@@ -129,14 +129,14 @@ const renderChart = () => {
                 data: [
                     {
                         value: [
-                            profile.funding_capacity,
-                            profile.team_experience,
-                            profile.supply_chain_depth,
-                            profile.operation_capability,
-                            profile.risk_tolerance,
-                            profile.market_insight,
-                            profile.tech_capability,
-                            profile.brand_awareness
+                            profile.fundingCapacity,
+                            profile.teamExperience,
+                            profile.supplyChainDepth,
+                            profile.operationCapability,
+                            profile.riskTolerance,
+                            profile.marketInsight,
+                            profile.techCapability,
+                            profile.brandAwareness
                         ],
                         name: '当前能力',
                         areaStyle: {
@@ -161,17 +161,17 @@ const updateChart = () => {
     renderChart()
     // 简单的本地预估
     const values = [
-        profile.funding_capacity,
-        profile.team_experience,
-        profile.supply_chain_depth,
-        profile.operation_capability,
-        profile.risk_tolerance,
-        profile.market_insight,
-        profile.tech_capability,
-        profile.brand_awareness
+        profile.fundingCapacity,
+        profile.teamExperience,
+        profile.supplyChainDepth,
+        profile.operationCapability,
+        profile.riskTolerance,
+        profile.marketInsight,
+        profile.techCapability,
+        profile.brandAwareness
     ]
     const avg = values.reduce((a, b) => a + b, 0) / values.length
-    profile.total_score = avg.toFixed(1)
+    profile.totalScore = avg.toFixed(1)
 }
 
 const loadData = async () => {

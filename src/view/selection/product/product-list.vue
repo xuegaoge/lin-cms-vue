@@ -28,6 +28,21 @@
             <el-option label="淘汰" value="reject"></el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="searchForm.priority" placeholder="全部优先级" clearable style="width: 120px">
+            <el-option label="P1-最高" value="P1"></el-option>
+            <el-option label="P2-高" value="P2"></el-option>
+            <el-option label="P3-中" value="P3"></el-option>
+            <el-option label="P4-低" value="P4"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-select v-model="searchForm.sort" placeholder="排序字段" style="width: 120px">
+            <el-option label="创建时间" value="created_at"></el-option>
+            <el-option label="更新时间" value="updated_at"></el-option>
+            <el-option label="优先级" value="priority_level"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="resetForm">重置</el-button>
@@ -52,11 +67,20 @@
             <el-tag :type="getStatusType(scope.row.status)" effect="light" size="small">{{ scope.row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="综合评分" width="120" sortable>
+        <el-table-column label="评分概览" width="140" sortable>
              <template #default="scope">
-                <div class="score-cell clickable" @click="handleViewStrategySummary(scope.row)" title="点击查看各维度评分详情">
-                  <span :style="{ color: getScoreColor(scope.row.score), fontWeight: 'bold', fontSize: '16px' }">{{ scope.row.score || '-' }}</span>
-                  <span class="suffix">分</span>
+                <div class="score-cell clickable" @click="handleViewStrategySummary(scope.row)" title="点击查看详情">
+                  <div v-if="scope.row.latestScores">
+                     <div v-if="scope.row.latestScores.s01">
+                        <span class="label">S1:</span>
+                        <span :style="{ color: getScoreColor(scope.row.latestScores.s01) }">{{ scope.row.latestScores.s01 }}</span>
+                     </div>
+                     <div v-if="scope.row.latestScores.s02">
+                        <span class="label">S2:</span>
+                        <span :style="{ color: getScoreColor(scope.row.latestScores.s02) }">{{ scope.row.latestScores.s02 }}</span>
+                     </div>
+                  </div>
+                  <span v-else>-</span>
                 </div>
              </template>
         </el-table-column>
@@ -89,8 +113,10 @@
         <el-pagination
           background
           layout="prev, pager, next"
-          :total="100"
-          :page-size="10"
+          :total="total"
+          :page-size="pageSize"
+          v-model:current-page="currentPage"
+          @current-change="handleCurrentChange"
         />
       </div>
     </div>
@@ -101,15 +127,21 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Product } from '@/lin/model/selection'
+import { Product, Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const searchForm = reactive({
   name: '',
   category: '',
-  status: ''
+  status: '',
+  priority: '',
+  sort: 'created_at',
+  order: 'desc'
 })
 
 const tableData = ref([])
@@ -133,9 +165,19 @@ const getScoreColor = (score) => {
 const handleSearch = async () => {
   loading.value = true
   try {
-    const res = await Product.getProducts(searchForm)
+    const res = await Product.getProducts({
+      page: currentPage.value,
+      size: pageSize.value,
+      keyword: searchForm.name,
+      category: searchForm.category,
+      status: searchForm.status,
+      priority: searchForm.priority,
+      sort: searchForm.sort,
+      order: searchForm.order
+    })
     // 根据后端返回结构适配，通常列表在 items 中
     tableData.value = res.items || res
+    total.value = res.total || 0
   } catch (error) {
     console.error('获取产品列表失败', error)
     // ElMessage.error('获取产品列表失败') // axios 拦截器可能已处理
@@ -144,10 +186,19 @@ const handleSearch = async () => {
   }
 }
 
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  handleSearch()
+}
+
 const resetForm = () => {
   searchForm.name = ''
   searchForm.category = ''
   searchForm.status = ''
+  searchForm.priority = ''
+  searchForm.sort = 'created_at'
+  searchForm.order = 'desc'
+  currentPage.value = 1
   handleSearch()
 }
 
@@ -163,13 +214,20 @@ const handleDetail = (row) => {
   router.push(`/selection/product/${row.id}`)
 }
 
-const handleExecute = (row) => {
-  ElMessage.success(`已触发 [${row.productName}] 的全量策略评估`)
-  // 实际场景下可调用后端 API，或者跳转到详情页并自动打开执行弹窗
-  // 这里演示跳转逻辑
-  setTimeout(() => {
-      router.push(`/selection/product/${row.id}?tab=strategies`)
-  }, 500)
+
+
+const handleExecute = async (row) => {
+  try {
+    await Strategy.executeAll(row.id)
+    ElMessage.success(`已触发 [${row.productName}] 的全量策略评估`)
+    // 稍微延迟后跳转，让用户看到成功提示
+    setTimeout(() => {
+        router.push(`/selection/product/${row.id}?tab=strategies`)
+    }, 500)
+  } catch (error) {
+    console.error('策略执行失败', error)
+    // ElMessage.error 由拦截器处理，或手动添加
+  }
 }
 
 const handleViewStrategySummary = (row) => {
@@ -248,6 +306,7 @@ onMounted(() => {
         cursor: pointer;
         &:hover { text-decoration: underline; }
       }
+      .label { font-size: 12px; color: #909399; margin-right: 4px; }
       .suffix { font-size: 12px; color: #909399; margin-left: 2px; }
     }
     

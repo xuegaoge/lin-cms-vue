@@ -1,5 +1,5 @@
 <template>
-  <div class="container" v-loading="executing" element-loading-text="策略模型正在运算中...">
+  <div class="container" v-loading="executing || loading" :element-loading-text="executing ? '策略模型正在运算中...' : '加载中...'">
     <div class="header-actions">
       <div class="left">
         <el-button icon="el-icon-back" circle @click="handleBack"></el-button>
@@ -337,32 +337,12 @@ const router = useRouter()
 const activeTab = ref('basic')
 const isEdit = ref(false)
 const executing = ref(false)
+const loading = ref(false)
 const dialogVisible = ref(false)
 const executionType = ref('all')
 
-// 模拟策略结果数据
-const strategyResults = ref([
-  { code: 'S01', name: '四层评估体系', score: 85.5, executedAt: '2025-12-21 14:30', path: 'evaluation' },
-  { code: 'S02', name: '40题自诊系统', score: 320, executedAt: '2025-12-21 14:35', path: 'diagnosis' },
-  { code: 'S03', name: '完整利润模型', result: 'GO', score: null, executedAt: '2025-12-21 14:40', path: 'profit' },
-  { code: 'S04', name: '36项风险预警', result: 'HIGH', score: null, executedAt: '2025-12-21 14:45', path: 'risk' },
-  { code: 'S05', name: '11维度评估', score: 72, executedAt: '2025-12-21 14:46', path: 'scoring', query: { code: 'S05' } },
-  { code: 'S06', name: '五维选品模型', score: 88, executedAt: '2025-12-21 14:47', path: 'scoring', query: { code: 'S06' } },
-  { code: 'S07', name: '赛道市场评估', score: 65, executedAt: '2025-12-21 14:48', path: 'scoring', query: { code: 'S07' } },
-  { code: 'S08', name: 'TOP20策略套利库', result: '推荐', score: null, executedAt: '2025-12-21 14:50', path: 'top20' },
-  { code: 'S09', name: '蓝海深度识别', score: 85, executedAt: '2025-12-21 14:55', path: 'blue-ocean' },
-  { code: 'S10', name: '赛道热度评级', score: 80, executedAt: '2025-12-21 14:56', path: 'scoring', query: { code: 'S10' } },
-  { code: 'S11', name: '企业定位评估', score: 420, executedAt: '2025-12-21 14:57', path: '../enterprise' },
-  { code: 'S12', name: 'A9算法指标库', score: 78, executedAt: '2025-12-21 14:58', path: 'scoring', query: { code: 'S12' } },
-  { code: 'S13', name: '爆点识别引擎', result: 'HIGH', score: null, executedAt: '2025-12-21 15:00', path: 'explosive' },
-  { code: 'S14', name: '20节点决策树', result: 'FAIL', score: null, executedAt: '2025-12-21 15:01', path: 'decision-tree' },
-  { code: 'S15', name: '竞品分析矩阵', result: '完成', score: null, executedAt: '2025-12-21 15:02', path: 'competitor' },
-  { code: 'S16', name: '供应链评估', score: 92, executedAt: '2025-12-21 15:03', path: 'scoring', query: { code: 'S16' } },
-  { code: 'S17', name: '6大创新矩阵', score: 78, executedAt: '2025-12-21 15:05', path: 'innovation' },
-  { code: 'S18', name: '压力测试系统', result: '85%', score: null, executedAt: '2025-12-21 15:06', path: 'stress-test' },
-  { code: 'S19', name: '关键词研究策略', score: 68, executedAt: '2025-12-21 15:07', path: 'scoring', query: { code: 'S19' } },
-  { code: 'S20', name: '市场趋势分析', score: 82, executedAt: '2025-12-21 15:08', path: 'scoring', query: { code: 'S20' } },
-])
+// 策略结果数据
+const strategyResults = ref([])
 
 const form = reactive({
   // Basic
@@ -402,6 +382,32 @@ const form = reactive({
   returnRate: 0
 })
 
+const getStrategyPath = (code) => {
+    const map = {
+        'S01': 'evaluation',
+        'S02': 'diagnosis',
+        'S03': 'profit',
+        'S04': 'risk',
+        'S05': 'scoring',
+        'S06': 'scoring',
+        'S07': 'scoring',
+        'S08': 'top20',
+        'S09': 'blue-ocean',
+        'S10': 'scoring',
+        'S11': '../enterprise',
+        'S12': 'scoring',
+        'S13': 'explosive',
+        'S14': 'decision-tree',
+        'S15': 'competitor',
+        'S16': 'scoring',
+        'S17': 'innovation',
+        'S18': 'stress-test',
+        'S19': 'scoring',
+        'S20': 'scoring'
+    }
+    return map[code] || ''
+}
+
 onMounted(() => {
   const id = route.params.id
   if (id && id !== ':id') {
@@ -416,23 +422,36 @@ onMounted(() => {
 
 const loadData = async (id) => {
   try {
-    loading.value = true // Note: variable name was executing in template, but usually loading is used. Template uses executing for execution.
-    // We might need a separate loading state for data fetch.
-    // The template uses v-loading="executing". I should probably add a loading state or just use executing?
-    // Let's use executing for now or add loading.
-    // Actually template says v-loading="executing" element-loading-text="策略模型正在运算中...". This is specific to strategy.
-    // I should add a pageLoading state? Or just block it.
-    // For now, I'll just fetch.
-    const res = await Product.getProduct(id)
-    Object.assign(form, res) // Assuming res matches form structure or flat
-    // If backend returns { productName: ... }, this works.
+    loading.value = true
+    // 并行加载产品详情和策略历史
+    const [productRes, strategyRes] = await Promise.all([
+        Product.getProduct(id),
+        Strategy.getExecutionHistory(id)
+    ])
+
+    if (productRes) {
+        Object.assign(form, productRes)
+    }
     
-    // Check if strategies results are included
-    if (res.strategies) {
-        strategyResults.value = res.strategies
+    // 映射策略历史数据
+    if (strategyRes) {
+        // 后端返回可能是 { items: [], total: ... } 或直接 []
+        const items = Array.isArray(strategyRes) ? strategyRes : (strategyRes.items || [])
+        strategyResults.value = items.map(item => ({
+            ...item,
+            code: item.strategyCode,
+            name: item.strategyName,
+            result: item.decision, // 后端叫 Decision，前端模版用 result
+            score: item.score,
+            executedAt: item.executedAt,
+            path: getStrategyPath(item.strategyCode),
+            query: ['S05', 'S06', 'S07', 'S10', 'S12', 'S16', 'S19', 'S20'].includes(item.strategyCode) ? { code: item.strategyCode } : {}
+        }))
     }
   } catch (error) {
-    console.error('加载产品详情失败', error)
+    console.error('加载详情失败', error)
+  } finally {
+      loading.value = false
   }
 }
 

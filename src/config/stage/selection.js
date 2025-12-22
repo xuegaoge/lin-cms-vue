@@ -36,6 +36,14 @@ const selectionRouter = {
       icon: 'iconfont icon-shangpinguanli',
     },
     {
+      title: '策略执行历史',
+      type: 'view',
+      name: 'StrategyHistory',
+      route: '/selection/product/:id/strategies',
+      filePath: 'view/selection/product/strategy-history.vue',
+      inNav: false,
+    },
+    {
       title: '策略中心',
       type: 'view',
       name: 'StrategyCenter',
