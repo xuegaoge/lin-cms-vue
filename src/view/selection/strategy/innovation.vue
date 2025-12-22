@@ -14,7 +14,7 @@
           <el-card shadow="hover" class="chart-card">
             <template #header>
               <div class="card-header">
-                <span><i class="el-icon-magic-stick"></i> 创新维度雷达图</span>
+                <span><el-icon><MagicStick /></el-icon> 创新维度雷达图</span>
               </div>
             </template>
             <div id="radarChart" style="width: 100%; height: 450px;"></div>
@@ -122,33 +122,81 @@ const loadData = async () => {
     
     loading.value = true
     try {
-        const res = await Strategy.execute('S17', productId)
+        const response = await Strategy.execute('S17', productId)
+        // axios 返回的数据在 response.data 中
+        const res = response.data || response
+        console.log('[S17] API Response:', res)
         processResult(res)
     } catch (e) {
-        console.error(e)
+        console.error('[S17] Load error:', e)
     } finally {
         loading.value = false
     }
 }
 
 const processResult = (res) => {
-    score.value = res.score
-    grade.value = res.score >= 80 ? '高创新潜力' : (res.score >= 50 ? '微创新产品' : '常规产品')
-    reason.value = res.reason
+    // 尝试解析 detail_json
+    let details = {};
+    if (res.detail_json) {
+        try {
+            details = typeof res.detail_json === 'string' ? JSON.parse(res.detail_json) : res.detail_json;
+        } catch (e) {
+            console.error("Failed to parse detail_json", e);
+        }
+    }
 
-    if (res.suggestions) {
-        points.value = res.suggestions.map(s => ({
-            text: s.split(':')[1] || s,
-            category: s.split(':')[0]
-        }))
+    // 优先使用 details 中的数据，如果没有则回退到 res
+    score.value = details.Score || details.score || res.score || 0;
+    
+    // Grade处理
+    const rawGrade = details.Grade || details.grade || res.grade;
+    if (rawGrade) {
+        grade.value = rawGrade; // 如果后端返回了等级（如C），直接使用
+    } else {
+        grade.value = score.value >= 80 ? '高创新潜力' : (score.value >= 50 ? '微创新产品' : '常规产品');
+    }
+    
+    // Reason处理
+    reason.value = details.Reason || details.reason || res.reason || '';
+
+    // Suggestions处理
+    // 兼容多种来源: details.Suggestions (Pascal), details.suggestions (camel), res.suggestions (camel)
+    const rawSuggestions = details.Suggestions || details.suggestions || res.suggestions || [];
+    
+    if (rawSuggestions && Array.isArray(rawSuggestions) && rawSuggestions.length > 0) {
+        points.value = rawSuggestions.map(s => {
+            // 处理字符串格式: "此部分: 后面是内容"
+            if (typeof s === 'string') {
+                const parts = s.split(':');
+                if (parts.length > 1) {
+                    return {
+                        category: parts[0].trim(),
+                        text: parts.slice(1).join(':').trim()
+                    };
+                }
+                return { category: '通用', text: s };
+            }
+            // 处理对象格式 (如果后端改为返回对象)
+            return {
+                category: s.Dimension || s.dimension || '通用',
+                text: s.Recommendation || s.recommendation || s.action || ''
+            };
+        });
 
         // 更新雷达图维度
+        // 根据 points 中的 category 来匹配 dimensions
         dimensions.value.forEach(d => {
-            const matched = res.suggestions.filter(s => s.startsWith(d.name)).length
-            d.value = matched > 0 ? 80 + (matched * 5) : 30 // 简单的打分逻辑适配
-        })
+            // 模糊匹配: 如果 category 包含维度名称 (例如 "定价创新" 包含 "定价创新")
+            const matched = points.value.filter(p => p.category.includes(d.name.replace('创新', ''))).length;
+            // 如果有建议点，给高分(80+)，否则给基础分(40)
+            d.value = matched > 0 ? 80 + (matched * 5) : 40; 
+        });
         
-        initRadarChart()
+        initRadarChart();
+    } else {
+        // 如果没有 suggestions，给一个默认的雷达图
+         dimensions.value.forEach(d => d.value = 30);
+         initRadarChart();
     }
 }
 

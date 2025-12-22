@@ -14,7 +14,7 @@
           <el-card shadow="hover" class="chart-card">
             <template #header>
               <div class="card-header">
-                <span><i class="el-icon-s-data"></i> 8大机会维度雷达图</span>
+                <span><el-icon><DataAnalysis /></el-icon> 8大机会维度雷达图</span>
               </div>
             </template>
             <div id="radarChart" style="width: 100%; height: 400px;"></div>

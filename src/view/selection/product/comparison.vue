@@ -47,7 +47,7 @@
     <el-dialog v-model="dialogVisible" title="选择产品" width="600px">
         <el-table :data="productList" @selection-change="handleSelectionChange" height="400">
             <el-table-column type="selection" width="55" />
-            <el-table-column property="productName" label="产品名称" />
+            <el-table-column property="product_name" label="产品名称" />
             <el-table-column property="asin" label="ASIN" width="150" />
             <el-table-column property="score" label="评分" width="100" />
         </el-table>
@@ -104,7 +104,7 @@ const confirmSelection = () => {
     // Add selected products to selectedProducts list, avoiding duplicates
     selection.value.forEach(item => {
         if (!selectedProducts.value.find(p => p.id === item.id)) {
-            selectedProducts.value.push({ id: item.id, name: item.productName, asin: item.asin })
+            selectedProducts.value.push({ id: item.id, name: item.product_name, asin: item.asin })
         }
     })
     dialogVisible.value = false

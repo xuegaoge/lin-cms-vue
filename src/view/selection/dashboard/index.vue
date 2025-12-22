@@ -26,7 +26,7 @@
             <div class="card-value">{{ item.value }}</div>
           </div>
           <div class="card-icon">
-             <i :class="item.iconClass"></i>
+             <el-icon><component :is="item.icon" /></el-icon>
           </div>
         </div>
       </el-col>
@@ -48,7 +48,7 @@
           <div class="card-header">
             <span>策略执行覆盖率</span>
             <el-tooltip content="各核心策略在选品池中的执行渗透率" placement="top">
-              <i class="el-icon-info" style="color: #909399; cursor: pointer"></i>
+              <el-icon style="color: #909399; cursor: pointer"><InfoFilled /></el-icon>
             </el-tooltip>
           </div>
           <div ref="coverageChart" style="height: 320px;"></div>
@@ -117,12 +117,12 @@ const dateRange = ref([])
 const statusChart = ref(null)
 const coverageChart = ref(null)
 
-// 使用 Element Plus 图标类名
+// 使用 Element Plus 图标组件名称
 const summaryData = ref([
-    { title: '待评估产品', value: '-', iconClass: 'el-icon-timer', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { title: '已通过 (GO)', value: '-', iconClass: 'el-icon-check', color: 'linear-gradient(135deg, #2af598 0%, #009efd 100%)' },
-    { title: '淘汰产品', value: '-', iconClass: 'el-icon-close', color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
-    { title: '预估年度ROI', value: '-', iconClass: 'el-icon-money', color: 'linear-gradient(120deg, #f6d365 0%, #fda085 100%)' }
+    { title: '待评估产品', value: '-', icon: 'Timer', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    { title: '已通过 (GO)', value: '-', icon: 'CircleCheck', color: 'linear-gradient(135deg, #2af598 0%, #009efd 100%)' },
+    { title: '淘汰产品', value: '-', icon: 'CircleClose', color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)' },
+    { title: '预估年度ROI', value: '-', icon: 'Money', color: 'linear-gradient(120deg, #f6d365 0%, #fda085 100%)' }
 ])
 
 const alerts = ref([])
@@ -131,52 +131,48 @@ const approvals = ref([])
 const loadData = async () => {
   try {
     const biData = await Dashboard.getBiData()
-    // 假设后端返回结构映射
-    if (biData.summary) {
-        summaryData.value[0].value = biData.summary.pending || 0
-        summaryData.value[1].value = biData.summary.passed || 0
-        summaryData.value[2].value = biData.summary.rejected || 0
-        summaryData.value[3].value = (biData.summary.roi || 0) + '%'
+    // 后端返回 BIDashboardDto 的 snake_case 版本
+    if (biData) {
+        summaryData.value[0].value = biData.active_products || 0
+        summaryData.value[1].value = biData.total_products || 0 // 暂时用总数表示
+        summaryData.value[2].value = biData.high_risk_count || 0
+        summaryData.value[3].value = (biData.average_score || 0).toFixed(1)
     }
     
-    if (biData.alerts) {
-        alerts.value = biData.alerts
-    } else {
-        // Fallback or separate call if needed
-        // const alertData = await Dashboard.getAlerts()
-        // alerts.value = alertData
+    if (biData.recent_alerts) {
+        alerts.value = biData.recent_alerts.map(a => ({
+            product: a.product_name,
+            type: a.alert_type,
+            desc: a.message
+        }))
     }
 
-    if (biData.approvals) {
-        approvals.value = biData.approvals
+    if (biData.top_products) {
+        approvals.value = biData.top_products.map(p => ({
+            product: p.product_name,
+            status: p.risk_level === 'high' ? '高风险' : '正常',
+            time: '评分: ' + (p.total_score || 0)
+        }))
     }
 
-    // Update charts if data is present
-    if (biData.charts) {
-        initCharts(biData.charts)
-    } else {
-        initCharts()
-    }
+    // Update charts
+    initCharts(biData)
 
   } catch (error) {
     console.error('加载BI数据失败', error)
-    // ElMessage.error('加载BI数据失败')
-    initCharts() // Initialize with empty or default
+    initCharts()
   }
 }
 
-const initCharts = (chartData = null) => {
-    // 状态分布饼图
+const initCharts = (biData = null) => {
     const sChart = echarts.init(statusChart.value)
-    // Use chartData if available, else default
-    const statusData = chartData?.status || [
-        { value: 0, name: '通过 (GO)', itemStyle: { color: '#67c23a' } },
-        { value: 0, name: '评估中', itemStyle: { color: '#e6a23c' } },
-        { value: 0, name: '淘汰 (STOP)', itemStyle: { color: '#f56c6c' } },
-        { value: 0, name: '草稿', itemStyle: { color: '#909399' } }
+    // 假设后端没有提供 status 统计，我们根据 total 和 active 模拟或使用默认
+    const statusData = [
+        { value: biData?.active_products || 0, name: '活跃产品', itemStyle: { color: '#67c23a' } },
+        { value: (biData?.total_products || 0) - (biData?.active_products || 0), name: '其他', itemStyle: { color: '#909399' } }
     ]
     
-    sChart.setOption({
+sChart.setOption({
         tooltip: { trigger: 'item' },
         legend: { bottom: '0%', left: 'center', itemWidth: 10, itemHeight: 10 },
         series: [{
@@ -195,15 +191,17 @@ const initCharts = (chartData = null) => {
 
     // 策略覆盖率柱状图
     const cChart = echarts.init(coverageChart.value)
-    const coverageData = chartData?.coverage || [0, 0, 0, 0, 0]
+    const dist = biData?.strategy_distribution || {}
+    const codes = Object.keys(dist).slice(0, 5)
+    const coverageData = codes.map(code => dist[code])
     
-    cChart.setOption({
+cChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: ['S01', 'S02', 'S03', 'S04', 'S05'], axisTick: { show: false }, axisLine: { lineStyle: { color: '#E4E7ED' } }, axisLabel: { color: '#606266' } },
+        xAxis: { type: 'category', data: codes.length ? codes : ['S01', 'S02', 'S03', 'S04', 'S05'], axisTick: { show: false }, axisLine: { lineStyle: { color: '#E4E7ED' } }, axisLabel: { color: '#606266' } },
         yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
         series: [{
-            data: coverageData,
+            data: coverageData.length ? coverageData : [0, 0, 0, 0, 0],
             type: 'bar',
             barWidth: '40%',
             itemStyle: { 
@@ -221,12 +219,7 @@ const initCharts = (chartData = null) => {
         sChart.resize()
         cChart.resize()
     })
-}
-
-onMounted(() => {
-    loadData()
-})
-</script>
+}</script>
 
 <style lang="scss" scoped>
 .container {

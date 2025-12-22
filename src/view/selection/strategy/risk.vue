@@ -93,27 +93,33 @@ const loadData = async () => {
 }
 
 const processResult = (res) => {
-    score.value = res.score
-    overallLevel.value = res.grade // 假设后端返回 "高风险" / "中风险"
-    
-    // Parse resultData for RiskAlerts list
-    let data = {}
-    if (res.resultData) {
-        try {
-            data = typeof res.resultData === 'string' ? JSON.parse(res.resultData) : res.resultData
-        } catch (e) {}
-    }
-
-    if (data.RiskAlerts && Array.isArray(data.RiskAlerts)) {
-        riskItems.value = data.RiskAlerts.map(item => ({
-            item: item.RiskName || item.riskName,
-            level: item.RiskLevel || item.riskLevel,
-            desc: item.Description || item.description,
-            suggestion: (item.Suggestions && item.Suggestions.length > 0) ? item.Suggestions[0] : ''
-        }))
-    } else {
-        riskItems.value = []
-    }
+  executed.value = true
+  resultData.value = res
+  
+  summary.value[0].value = res.score
+  summary.value[1].value = res.decision
+  
+  // 从 detail_json 获取风险项
+  let data = []
+  if (res.detail_json) {
+    data = typeof res.detail_json === 'string' ? JSON.parse(res.detail_json) : res.detail_json
+  } else if (res.sub_results) {
+      // 兼容 sub_results 模式
+      res.sub_results.forEach(sub => {
+          if (sub.indicators) {
+              sub.indicators.forEach(ind => {
+                  if (ind.score < 60) {
+                      data.push({
+                          type: sub.name,
+                          level: 'High',
+                          desc: ind.name + ': ' + (ind.calculation || ind.grade)
+                      })
+                  }
+              })
+          }
+      })
+  }
+  alerts.value = data
 }
 
 onMounted(() => {

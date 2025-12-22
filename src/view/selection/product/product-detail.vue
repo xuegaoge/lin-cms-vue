@@ -2,15 +2,15 @@
   <div class="container" v-loading="executing || loading" :element-loading-text="executing ? '策略模型正在运算中...' : '加载中...'">
     <div class="header-actions">
       <div class="left">
-        <el-button icon="el-icon-back" circle @click="handleBack"></el-button>
+        <el-button icon="Back" circle @click="handleBack"></el-button>
         <div class="title-group">
           <div class="title">{{ isEdit ? '编辑产品' : '产品详情' }}</div>
-          <div class="subtitle" v-if="form.asin">{{ form.productName }} ({{ form.asin }})</div>
+          <div class="subtitle" v-if="form.asin">{{ form.product_name }} ({{ form.asin }})</div>
         </div>
       </div>
       <div class="right">
-        <el-button type="success" @click="dialogVisible = true" icon="el-icon-video-play">运行策略</el-button>
-        <el-button type="primary" @click="handleSave" icon="el-icon-check">保存变更</el-button>
+        <el-button type="success" @click="dialogVisible = true" icon="VideoPlay" size="large">运行策略</el-button>
+        <el-button type="primary" @click="handleSave" icon="Check" size="large">保存变更</el-button>
       </div>
     </div>
 
@@ -25,7 +25,7 @@
               <el-row :gutter="40">
                 <el-col :span="12">
                   <el-form-item label="产品名称" required>
-                    <el-input v-model="form.productName" placeholder="请输入产品名称" size="large"></el-input>
+                    <el-input v-model="form.product_name" placeholder="请输入产品名称" size="large"></el-input>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
@@ -56,32 +56,32 @@
               <el-row :gutter="30">
                 <el-col :span="8">
                   <el-form-item label="月搜索量">
-                    <el-input-number v-model="form.monthlySearchVolume" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.monthly_search_volume" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="年增长率">
-                    <el-input v-model="form.searchGrowthRate" placeholder="0">
+                    <el-input v-model="form.search_growth_rate" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="竞品数量">
-                    <el-input-number v-model="form.competitorCount" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.competitor_count" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                 
                 <el-col :span="8">
                   <el-form-item label="头部集中度(CR3)">
-                    <el-input v-model="form.topConcentration" placeholder="0">
+                    <el-input v-model="form.top_concentration" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="新品占比">
-                    <el-input v-model="form.newProductRatio" placeholder="0">
+                    <el-input v-model="form.new_product_ratio" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
@@ -93,12 +93,12 @@
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="平均评分">
-                    <el-rate v-model="form.averageRating" allow-half show-score text-color="#ff9900" />
+                    <el-rate v-model="form.average_rating" allow-half show-score text-color="#ff9900" />
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="Review总数">
-                    <el-input-number v-model="form.totalReviews" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.total_reviews" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -114,53 +114,53 @@
               <el-row :gutter="30">
                  <el-col :span="8">
                   <el-form-item label="目标售价">
-                    <el-input-number v-model="form.targetPrice" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.target_price" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="采购成本">
-                    <el-input-number v-model="form.purchaseCost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.purchase_cost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="头程运费(单件)">
-                    <el-input-number v-model="form.shippingCost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.shipping_cost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="FBA费用">
-                    <el-input-number v-model="form.fbaCost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.fba_cost" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="广告CPC">
-                    <el-input-number v-model="form.advertisingCPC" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.advertising_cpc" :precision="2" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="预期转化率">
-                    <el-input v-model="form.conversionRate" placeholder="0">
+                    <el-input v-model="form.conversion_rate" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="预期点击率">
-                    <el-input v-model="form.clickThroughRate" placeholder="0">
+                    <el-input v-model="form.click_through_rate" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="单品重量">
-                    <el-input v-model="form.weightKg" placeholder="0">
+                    <el-input v-model="form.weight_kg" placeholder="0">
                         <template #append>kg</template>
                     </el-input>
                   </el-form-item>
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="单品体积">
-                    <el-input v-model="form.volumeCbm" placeholder="0">
+                    <el-input v-model="form.volume_cbm" placeholder="0">
                         <template #append>cbm</template>
                     </el-input>
                   </el-form-item>
@@ -178,17 +178,17 @@
               <el-row :gutter="30">
                  <el-col :span="8">
                   <el-form-item label="供应商数量">
-                    <el-input-number v-model="form.supplierCount" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                    <el-input-number v-model="form.supplier_count" :min="0" style="width:100%" controls-position="right"></el-input-number>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="稳定性评分">
-                    <el-slider v-model="form.supplierStability" :min="0" :max="100"></el-slider>
+                    <el-slider v-model="form.supplier_stability" :min="0" :max="100"></el-slider>
                   </el-form-item>
                 </el-col>
                 <el-col :span="8">
                   <el-form-item label="生产交期">
-                    <el-input v-model="form.leadTimeDays" placeholder="0">
+                    <el-input v-model="form.lead_time_days" placeholder="0">
                         <template #append>天</template>
                     </el-input>
                   </el-form-item>
@@ -200,7 +200,7 @@
                 </el-col>
                  <el-col :span="8">
                   <el-form-item label="价格波动率">
-                    <el-input v-model="form.priceVolatility" placeholder="0">
+                    <el-input v-model="form.price_volatility" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
@@ -218,7 +218,7 @@
               <el-row :gutter="30">
                 <el-col :span="12">
                   <el-form-item label="侵权风险">
-                    <el-radio-group v-model="form.infringementRisk">
+                    <el-radio-group v-model="form.infringement_risk">
                       <el-radio-button label="High">高</el-radio-button>
                       <el-radio-button label="Medium">中</el-radio-button>
                       <el-radio-button label="Low">低</el-radio-button>
@@ -227,7 +227,7 @@
                 </el-col>
                  <el-col :span="12">
                   <el-form-item label="认证要求">
-                    <el-radio-group v-model="form.certificationLevel">
+                    <el-radio-group v-model="form.certification_level">
                       <el-radio-button label="Strict">严格</el-radio-button>
                       <el-radio-button label="Normal">一般</el-radio-button>
                       <el-radio-button label="Loose">宽松</el-radio-button>
@@ -236,12 +236,12 @@
                 </el-col>
                  <el-col :span="12">
                   <el-form-item label="政策风险评分">
-                    <el-slider v-model="form.policyRisk" :min="0" :max="1" :step="0.1" show-stops></el-slider>
+                    <el-slider v-model="form.policy_risk" :min="0" :max="1" :step="0.1" show-stops></el-slider>
                   </el-form-item>
                 </el-col>
                  <el-col :span="12">
                   <el-form-item label="预期退货率">
-                     <el-input v-model="form.returnRate" placeholder="0">
+                     <el-input v-model="form.return_rate" placeholder="0">
                         <template #append>%</template>
                     </el-input>
                   </el-form-item>
@@ -251,12 +251,161 @@
            </div>
         </el-tab-pane>
 
+        <!-- 产品属性 Tab -->
+        <el-tab-pane label="产品属性" name="attributes">
+          <div class="form-card">
+            <div class="card-title">产品特征</div>
+            <el-form label-width="140px">
+              <el-row :gutter="30">
+                <el-col :span="12">
+                  <el-form-item label="材质">
+                    <el-input v-model="form.material" placeholder="请输入材质"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="变体数量">
+                    <el-input-number v-model="form.variant_count" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="是否易碎">
+                    <el-switch v-model="form.is_fragile"></el-switch>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="是否液体">
+                    <el-switch v-model="form.is_liquid"></el-switch>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="是否危险品">
+                    <el-switch v-model="form.is_dangerous"></el-switch>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="产品生命周期">
+                    <el-input v-model="form.product_lifecycle" placeholder="0">
+                      <template #append>月</template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="复购率潜力">
+                    <el-input v-model="form.repurchase_rate" placeholder="0">
+                      <template #append>%</template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+        </el-tab-pane>
+
+        <!-- 竞争分析 Tab -->
+        <el-tab-pane label="竞争分析" name="competition">
+          <div class="form-card">
+            <div class="card-title">竞争态势</div>
+            <el-form label-width="160px">
+              <el-row :gutter="30">
+                <el-col :span="12">
+                  <el-form-item label="TOP10有Amazon Choice">
+                    <el-switch v-model="form.has_amazon_choice"></el-switch>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="BSR TOP10排名">
+                    <el-input-number v-model="form.bsr_top10" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="BSR TOP50排名">
+                    <el-input-number v-model="form.bsr_top50" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="长尾关键词占比">
+                    <el-input v-model="form.long_tail_keyword_ratio" placeholder="0">
+                      <template #append>%</template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="新品成功率">
+                    <el-input v-model="form.new_product_success_rate" placeholder="0">
+                      <template #append>%</template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="未回答的QA数量">
+                    <el-input-number v-model="form.qa_unanswered" :min="0" style="width:100%" controls-position="right"></el-input-number>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+        </el-tab-pane>
+
+        <!-- 差异化 Tab -->
+        <el-tab-pane label="差异化" name="differentiation">
+          <div class="form-card">
+            <div class="card-title">差异化优势</div>
+            <el-form label-width="160px">
+              <el-row :gutter="30">
+                <el-col :span="24">
+                  <el-form-item label="差异化卖点数量">
+                    <el-input-number v-model="form.differentiation_points" :min="0" :max="10" style="width:100%" controls-position="right"></el-input-number>
+                    <div style="font-size: 12px; color: #909399; margin-top: 4px;">建议3-10个差异化卖点</div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="功能差异评分">
+                    <el-rate v-model="form.function_diff" :max="10" show-score text-color="#409eff" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="材质差异评分">
+                    <el-rate v-model="form.material_diff" :max="10" show-score text-color="#409eff" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="设计差异评分">
+                    <el-rate v-model="form.design_diff" :max="10" show-score text-color="#409eff" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="包装差异评分">
+                    <el-rate v-model="form.packaging_diff" :max="10" show-score text-color="#409eff" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-alert 
+                title="差异化评分说明" 
+                type="info" 
+                :closable="false"
+                style="margin-top: 20px;">
+                <template #default>
+                  <div style="font-size: 13px; line-height: 1.6;">
+                    <p style="margin: 0 0 8px 0;"><strong>评分标准 (0-10分):</strong></p>
+                    <ul style="margin: 0; padding-left: 20px;">
+                      <li>0-3分: 与竞品高度相似,无明显差异</li>
+                      <li>4-6分: 有一定差异,但不够突出</li>
+                      <li>7-8分: 差异明显,具有竞争优势</li>
+                      <li>9-10分: 独特创新,市场领先</li>
+                    </ul>
+                  </div>
+                </template>
+              </el-alert>
+            </el-form>
+          </div>
+        </el-tab-pane>
+
         <!-- 策略结果 Tab -->
         <el-tab-pane label="策略结果" name="strategies">
           <div class="form-card">
             <div class="card-title">
               已执行策略评分汇总
-              <el-button type="text" icon="el-icon-refresh" @click="refreshStrategies" style="float: right">刷新</el-button>
+              <el-button type="text" icon="Refresh" @click="refreshStrategies" style="float: right">刷新数据</el-button>
             </div>
             
             <el-table :data="strategyResults" border style="width: 100%" v-if="strategyResults.length > 0">
@@ -272,24 +421,24 @@
               <el-table-column prop="score" label="评分/结果" width="120">
                 <template #default="scope">
                   <el-tag :type="getDecisionTagType(scope.row)" effect="plain">
-                    {{ scope.row.score ? scope.row.score + ' 分' : scope.row.result }}
+                    {{ (scope.row.score !== null && scope.row.score !== undefined) ? scope.row.score + ' 分' : scope.row.result }}
                   </el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="executedAt" label="执行时间" width="180" />
               <el-table-column label="操作">
                 <template #default="scope">
-                  <el-button link type="primary" @click="goToStrategyDetail(scope.row)">查看详细计算明细</el-button>
+                  <el-button link type="primary" @click="goToStrategyDetail(scope.row)">查看计算明细</el-button>
                 </template>
               </el-table-column>
             </el-table>
 
             <el-empty v-else description="暂无策略执行记录">
-              <el-button type="primary" @click="dialogVisible = true">立即运行全面评估</el-button>
+              <el-button type="primary" @click="dialogVisible = true" icon="VideoPlay">立即运行全面评估</el-button>
             </el-empty>
             
-            <div class="summary-tip" style="margin-top: 20px; color: #909399; font-size: 13px;" v-if="strategyResults.length > 0">
-              <i class="el-icon-info"></i> 评分基于当前产品录入的 30 个核心字段计算，数据变动后建议重新运行策略。
+            <div class="summary-tip" style="margin-top: 20px; color: #909399; font-size: 13px; display: flex; align-items: center;" v-if="strategyResults.length > 0">
+              <el-icon style="margin-right: 4px;"><InfoFilled /></el-icon> 评分基于当前产品录入的 30 个核心字段计算，数据变动后建议重新运行策略。
             </div>
           </div>
         </el-tab-pane>
@@ -346,40 +495,40 @@ const strategyResults = ref([])
 
 const form = reactive({
   // Basic
-  productName: '',
+  product_name: '',
   asin: '',
   category: '',
   brand: '',
   // Market
-  monthlySearchVolume: 0,
-  searchGrowthRate: 0,
-  competitorCount: 0,
-  topConcentration: 0,
-  newProductRatio: 0,
+  monthly_search_volume: 0,
+  search_growth_rate: 0,
+  competitor_count: 0,
+  top_concentration: 0,
+  new_product_ratio: 0,
   seasonality: 0,
-  averageRating: 0,
-  totalReviews: 0,
+  average_rating: 0,
+  total_reviews: 0,
   // Finance
-  targetPrice: 0,
-  purchaseCost: 0,
-  shippingCost: 0,
-  fbaCost: 0,
-  advertisingCPC: 0,
-  conversionRate: 0,
-  clickThroughRate: 0,
-  weightKg: 0,
-  volumeCbm: 0,
+  target_price: 0,
+  purchase_cost: 0,
+  shipping_cost: 0,
+  fba_cost: 0,
+  advertising_cpc: 0,
+  conversion_rate: 0,
+  click_through_rate: 0,
+  weight_kg: 0,
+  volume_cbm: 0,
   // Supply
-  supplierCount: 0,
-  supplierStability: 0,
-  leadTimeDays: 0,
+  supplier_count: 0,
+  supplier_stability: 0,
+  lead_time_days: 0,
   moq: 0,
-  priceVolatility: 0,
+  price_volatility: 0,
   // Risk
-  infringementRisk: 'Low',
-  certificationLevel: 'Normal',
-  policyRisk: 0,
-  returnRate: 0
+  infringement_risk: 'Low',
+  certification_level: 'Normal',
+  policy_risk: 0,
+  return_rate: 0
 })
 
 const getStrategyPath = (code) => {
@@ -403,7 +552,8 @@ const getStrategyPath = (code) => {
         'S17': 'innovation',
         'S18': 'stress-test',
         'S19': 'scoring',
-        'S20': 'scoring'
+        'S20': 'scoring',
+        'S21': 'scoring'
     }
     return map[code] || ''
 }
@@ -429,27 +579,33 @@ const loadData = async (id) => {
         Strategy.getExecutionHistory(id)
     ])
 
-    if (productRes) {
-        Object.assign(form, productRes)
+    // 提取产品数据 (后端返回 { code: 200, data: product })
+    const productData = productRes?.data || productRes
+    if (productData) {
+        Object.assign(form, productData)
     }
     
-    // 映射策略历史数据
-    if (strategyRes) {
+    // 提取策略历史数据 (后端返回 { code: 200, data: { items: [], total: ... } })
+    const strategyData = strategyRes?.data || strategyRes
+    if (strategyData) {
         // 后端返回可能是 { items: [], total: ... } 或直接 []
-        const items = Array.isArray(strategyRes) ? strategyRes : (strategyRes.items || [])
-        strategyResults.value = items.map(item => ({
-            ...item,
-            code: item.strategyCode,
-            name: item.strategyName,
-            result: item.decision, // 后端叫 Decision，前端模版用 result
-            score: item.score,
-            executedAt: item.executedAt,
-            path: getStrategyPath(item.strategyCode),
-            query: ['S05', 'S06', 'S07', 'S10', 'S12', 'S16', 'S19', 'S20'].includes(item.strategyCode) ? { code: item.strategyCode } : {}
-        }))
+        const items = Array.isArray(strategyData) ? strategyData : (strategyData.items || [])
+        strategyResults.value = items
+            .filter(item => item.is_latest) // 仅显示最新结果
+            .map(item => ({
+                ...item,
+                code: item.strategy_code,
+                name: item.strategy_name,
+                result: item.decision, // 后端叫 decision，前端模版用 result
+                score: item.score,
+                executedAt: item.executed_at,
+                path: getStrategyPath(item.strategy_code),
+                query: ['S05', 'S06', 'S07', 'S10', 'S12', 'S16', 'S19', 'S20', 'S21'].includes(item.strategy_code) ? { code: item.strategy_code } : {}
+            }))
     }
   } catch (error) {
     console.error('加载详情失败', error)
+    ElMessage.error('加载数据失败')
   } finally {
       loading.value = false
   }
@@ -481,7 +637,7 @@ const confirmExecution = async () => {
   
   try {
     let res
-    const productId = route.params.id
+    const productId = Number(route.params.id)
     if (executionType.value === 'all') {
       res = await Strategy.executeAll(productId)
     } else {
@@ -491,27 +647,21 @@ const confirmExecution = async () => {
        res = await Strategy.execute(code, productId)
     }
     
+    // 后端返回 { code: 200, data: {...} }
+    // axios拦截器已经返回了res.data,所以res就是 { code: 200, data: {...} }
+    // 我们需要提取data字段
+    const resultData = res.data || res
+    
     ElMessage.success('策略执行完成，结果已更新')
-    // Update strategy results
-    // Assuming res contains the updated strategy results list or the single result
-    if (Array.isArray(res)) {
-        strategyResults.value = res
-    } else if (res && res.code) {
-        // Update single result in list
-        const idx = strategyResults.value.findIndex(item => item.code === res.code)
-        if (idx > -1) {
-            strategyResults.value.splice(idx, 1, res)
-        } else {
-            strategyResults.value.unshift(res)
-        }
-    } else {
-        // Reload data to be sure
-        loadData(productId)
-    }
-
+    
+    // 重新加载策略历史以获取最新数据
+    await loadData(productId)
+    
+    // 切换到策略结果tab
     activeTab.value = 'strategies'
   } catch (error) {
     console.error('策略执行失败', error)
+    ElMessage.error('策略执行失败: ' + (error.message || '未知错误'))
   } finally {
     executing.value = false
   }
@@ -524,6 +674,20 @@ const handleRunStrategy = () => {
 const getDecisionText = (row) => {
     const code = row.code
     const result = row.result ? String(row.result).toUpperCase() : ''
+
+    // S21 综合选品决策 - 显示优先级
+    if (code === 'S21') {
+        // 从reason中提取优先级信息,如"P0-最高"、"P1-高"等
+        const reason = row.reason || ''
+        const priorityMatch = reason.match(/P[0-4]-[^)]+/)
+        if (priorityMatch) return priorityMatch[0]
+        // 如果没有匹配到,根据score判断
+        if (row.score >= 85) return 'P0-最高'
+        if (row.score >= 75) return 'P1-高'
+        if (row.score >= 65) return 'P2-中'
+        if (row.score >= 55) return 'P3-低'
+        return 'P4-暂缓'
+    }
 
     // 通用的 GO/WAIT/STOP 翻译 (适用于 S01, S03 等)
     if (result === 'GO') return '盈利达标'
@@ -564,6 +728,13 @@ const getDecisionText = (row) => {
 const getDecisionTagType = (row) => {
     const text = String(getDecisionText(row)).toLowerCase()
     const code = row.code || ''
+    
+    // S21 综合选品决策 - 根据优先级设置颜色
+    if (code === 'S21') {
+        if (text.includes('p0') || text.includes('p1')) return 'success'  // P0/P1 绿色
+        if (text.includes('p2')) return 'warning'  // P2 橙色
+        return 'danger'  // P3/P4 红色
+    }
     
     // 风险类或否定类逻辑特判
     if (code === 'S04' || code === 'S18' || code === 'S14') {

@@ -144,12 +144,13 @@ const initTornado = (data) => {
 }
 
 const handleRecalculate = async () => {
-    const productId = route.query.productId
+    const productId = Number(route.query.productId)
     if (!productId) return
     loading.value = true
     try {
         const res = await Strategy.execute('S03', productId)
-        processResult(res)
+        const data = res.data || res
+        processResult(data)
         ElMessage.success('财务数据已根据最新汇率和运费模板更新')
     } catch (e) {
         console.error(e)
@@ -159,19 +160,44 @@ const handleRecalculate = async () => {
 }
 
 const processResult = (res) => {
-    let data = {}
-    if (res.resultData) {
+    // 1. 解析 detail_json
+    let details = {}
+    if (res.detail_json || res.DetailJson) {
         try {
-            data = typeof res.resultData === 'string' ? JSON.parse(res.resultData) : res.resultData
-        } catch (e) {}
+            const raw = res.detail_json || res.DetailJson
+            details = typeof raw === 'string' ? JSON.parse(raw) : raw
+        } catch (e) { console.error(e) }
+    } else {
+        // 如果没有 detail_json，尝试直接使用 res 属性 (如果后端直接返回了打平的结构)
+        details = res
     }
-    
-    if (data.finance) {
-        Object.assign(finance, data.finance)
+
+    // 2. 映射财务指标 (兼容 camelCase 和 PascalCase)
+    // 优先从 Finance 字段获取，其次直接从 root 获取
+    const finData = details.Finance || details.finance || details
+
+    finance.price = finData.TargetPrice || finData.target_price || finData.price || 0
+    finance.margin = finData.NetProfitMargin || finData.net_profit_margin || finData.margin || 0
+    finance.roi = finData.Roi || finData.roi || 0
+    finance.breakeven = finData.BreakEvenSales || finData.break_even_sales || finData.breakeven || 0
+    finance.payback = finData.PaybackPeriod || finData.payback_period || finData.payback || 0
+    finance.annualRoi = finData.AnnualRoi || finData.annual_roi || finData.annualRoi || 0
+    finance.netProfit = finData.NetProfit || finData.net_profit || finData.netProfit || 0
+
+    // 3. 处理瀑布图数据
+    const waterfallData = details.Waterfall || details.waterfall
+    if (waterfallData) {
+        initWaterfall(waterfallData)
+    } else {
+        // 尝试从指标中构建基本的瀑布图数据 (如果后端没传 Waterfall 结构)
+        // 这里可以保留默认值作为兜底，或者根据 netProfit 反推
     }
-    
-    initWaterfall(data.waterfall)
-    initTornado(data.tornado)
+
+    // 4. 处理龙卷风图 (敏感性分析)
+    const tornadoData = details.Tornado || details.tornado || details.Sensitivity || details.sensitivity
+    if (tornadoData) {
+        initTornado(tornadoData)
+    }
 }
 
 const loadData = async () => {

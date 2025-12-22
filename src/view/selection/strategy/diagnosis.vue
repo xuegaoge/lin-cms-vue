@@ -199,10 +199,9 @@ const loadData = async () => {
     // Try to load existing result via execute/get
     try {
         const res = await Strategy.execute('S02', productId) // Or a specific get method if execute triggers recalc
-        // Assuming result contains answers in resultData or a separate field
-        if (res.resultData) {
-            let data = res.resultData
-            if (typeof data === 'string') data = JSON.parse(data)
+        // Assuming result contains answers in detail_json or a separate field
+        if (res.detail_json) {
+            let data = typeof res.detail_json === 'string' ? JSON.parse(res.detail_json) : res.detail_json
             if (data.answers) {
                 Object.assign(answers, data.answers)
                 submitted.value = true

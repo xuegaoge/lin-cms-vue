@@ -63,7 +63,7 @@ export class Strategy {
   }
 
   static submitDiagnosis(productId, answers) {
-    return post('api/selection/strategies/S02/submit', { product_id: productId, answers })
+    return post('api/selection/strategies/S02/submit', { product_id: productId, answers: answers })
   }
 
   // 新增: 获取策略执行历史

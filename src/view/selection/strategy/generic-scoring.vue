@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container" v-loading="loading">
     <div class="header">
       <div class="title-group">
         <div class="title">{{ strategyInfo.code }} - {{ strategyInfo.name }}</div>
@@ -8,13 +8,14 @@
       <el-button @click="handleBack">返回</el-button>
     </div>
 
-    <div class="content">
+    <div class="content" v-if="strategyInfo.code">
       <el-row :gutter="20">
         <el-col :span="14">
           <el-card shadow="hover" class="chart-card">
             <template #header>
               <div class="card-header">
-                <span><i class="el-icon-data-analysis"></i> 维度评分分析</span>
+                <el-icon><DataAnalysis /></el-icon>
+                <span> 维度评分分析</span>
               </div>
             </template>
             <div id="dimensionChart" style="width: 100%; height: 400px;"></div>
@@ -52,6 +53,7 @@
                      <span class="label">{{ item.name }}</span>
                      <el-progress :percentage="item.score" :color="getScoreColor(item.score)" :format="() => item.score"></el-progress>
                  </div>
+                 <el-empty v-if="!strategyInfo.dimensions.length" description="暂无维度数据" :image-size="60"></el-empty>
              </div>
           </el-card>
         </el-col>
@@ -75,13 +77,15 @@
         </el-col>
       </el-row>
     </div>
+    <el-empty v-else-if="!loading" description="未找到策略数据"></el-empty>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
+import { DataAnalysis } from '@element-plus/icons-vue'
 import { Strategy } from '@/lin/model/selection'
 
 const router = useRouter()
@@ -107,60 +111,108 @@ const loadData = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute(code, productId)
-        processResult(res, code)
+        // 兼容 Lin-CMS 不同版本的 axios 拦截器
+        const data = res.code !== undefined ? res.data : res
+        processResult(data, code)
     } catch (e) {
-        console.error(e)
+        console.error('Failed to load strategy data:', e)
     } finally {
         loading.value = false
     }
 }
 
 const processResult = (res, code) => {
-    // Basic mapping
+    if (!res) return
+
+    // 基础映射
     strategyInfo.value.code = code
-    strategyInfo.value.name = res.name || code
-    strategyInfo.value.score = res.score || 0
-    strategyInfo.value.desc = res.desc || '' // Backend might not return desc, fallback?
+    strategyInfo.value.name = res.strategyName || res.StrategyName || code
+    strategyInfo.value.score = res.score !== undefined ? res.score : (res.Score !== undefined ? res.Score : 0)
+    strategyInfo.value.desc = res.reason || res.Reason || '' 
     
-    // Parse resultData for detailed info
-    let details = {}
-    if (res.resultData) {
-        try {
-            details = typeof res.resultData === 'string' ? JSON.parse(res.resultData) : res.resultData
-        } catch(e) {}
+    let details = {
+        summary: res.reason || res.Reason || res.decision || res.Decision || '',
+        dimensions: [],
+        suggestions: []
     }
     
-    strategyInfo.value.summary = details.summary || res.result || ''
-    strategyInfo.value.dimensions = details.dimensions || []
-    strategyInfo.value.suggestions = details.suggestions || []
-    
-    initChart()
-}
+    // 优先从直接属性获取 (PascalCase & camelCase)
+    const subResults = res.subResults || res.SubResults
+    if (subResults && Array.isArray(subResults)) {
+        details.dimensions = subResults.map(s => ({
+            name: s.name || s.Name,
+            score: s.score !== undefined ? s.score : (s.Score !== undefined ? s.Score : 0)
+        }))
+    }
 
-onMounted(() => {
-    loadData()
-})
+    const suggestions = res.suggestions || res.Suggestions
+    if (suggestions && Array.isArray(suggestions)) {
+        details.suggestions = suggestions.map(s => {
+            if (typeof s === 'string') return { action: s, issue: '建议项', dimension: '综合' }
+            return {
+                issue: s.issue || s.Issue || '待优化项',
+                action: s.recommendation || s.Recommendation || s.action || s.Action || '',
+                dimension: s.dimension || s.Dimension || ''
+            }
+        })
+    }
+
+    // 如果维度为空，尝试解析 DetailJson
+    if (details.dimensions.length === 0) {
+        const detailJson = res.detailJson || res.DetailJson
+        if (detailJson) {
+            try {
+                const parsed = typeof detailJson === 'string' ? JSON.parse(detailJson) : detailJson
+                const pSub = parsed.subResults || parsed.SubResults || parsed.SubResults
+                if (pSub && Array.isArray(pSub)) {
+                    details.dimensions = pSub.map(s => ({
+                        name: s.name || s.Name,
+                        score: s.score !== undefined ? s.score : (s.Score !== undefined ? s.Score : 0)
+                    }))
+                }
+                const pSug = parsed.suggestions || parsed.Suggestions
+                if (!details.suggestions.length && pSug && Array.isArray(pSug)) {
+                    details.suggestions = pSug.map(s => {
+                        if (typeof s === 'string') return { action: s, issue: '优化项', dimension: '综合' }
+                        return { 
+                            issue: s.issue || s.Issue || '待优化项',
+                            action: s.recommendation || s.Recommendation || s.action || s.Action || '',
+                            dimension: s.dimension || s.Dimension || ''
+                        }
+                    })
+                }
+            } catch(e) { console.warn('DetailJson parse failed', e) }
+        }
+    }
+    
+    strategyInfo.value.summary = details.summary
+    strategyInfo.value.dimensions = details.dimensions
+    strategyInfo.value.suggestions = details.suggestions
+    
+    nextTick(() => {
+        initChart()
+    })
+}
 
 const initChart = () => {
     const chartDom = document.getElementById('dimensionChart')
-    if(!chartDom || !echarts) return // echarts might be undefined if not imported? imported above.
+    if(!chartDom) return
     
-    // Dispose if exists
     let myChart = echarts.getInstanceByDom(chartDom)
     if (myChart) myChart.dispose()
 
-    myChart = echarts.init(chartDom)
-    
     const indicators = strategyInfo.value.dimensions.map(d => ({ name: d.name, max: 100 }))
     const values = strategyInfo.value.dimensions.map(d => d.score)
 
     if (indicators.length === 0) return
 
+    myChart = echarts.init(chartDom)
     const option = {
-        tooltip: {},
+        tooltip: { trigger: 'item' },
         radar: {
             indicator: indicators,
-            radius: '65%'
+            radius: '65%',
+            axisName: { color: '#333' }
         },
         series: [{
             name: '维度评分',
@@ -174,8 +226,6 @@ const initChart = () => {
         }]
     }
     myChart.setOption(option)
-    
-    // Resize listener could be added
 }
 
 const handleBack = () => {
@@ -206,6 +256,10 @@ const getScoreLevel = (score) => {
     if (score >= 60) return 'C (及格)'
     return 'D (淘汰)'
 }
+
+onMounted(() => {
+    loadData()
+})
 </script>
 
 <style scoped lang="scss">

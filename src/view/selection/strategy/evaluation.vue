@@ -165,38 +165,47 @@ const processResult = (res) => {
     
     // Summary
     summary.value[0].value = res.score
-    summary.value[0].desc = '基于 MPSF 模型'
-    summary.value[1].value = res.result
+    summary.value[0].desc = '评分等级: ' + (res.grade || '-')
+    summary.value[1].value = res.decision
     
-    // Parsing details from result.resultData (assuming JSON)
-    let extraData = {}
-    if (res.resultData && typeof res.resultData === 'string') {
-        try { extraData = JSON.parse(res.resultData) } catch(e){}
-    } else if (res.resultData) {
-        extraData = res.resultData
-    }
+    // 从 sub_results 提取 MPSF 四层得分
+    const scores = [0, 0, 0, 0] // M, P, S, F
+    if (res.sub_results && Array.isArray(res.sub_results)) {
+        res.sub_results.forEach(sub => {
+            const name = sub.name.toLowerCase()
+            if (name.includes('市场') || name.includes('market')) scores[0] = sub.score
+            else if (name.includes('产品') || name.includes('product')) scores[1] = sub.score
+            else if (name.includes('供应') || name.includes('supply')) scores[2] = sub.score
+            else if (name.includes('财务') || name.includes('finance')) scores[3] = sub.score
+        })
 
-    // Chart scores
-    const scores = [
-        extraData.marketScore || 0,
-        extraData.productScore || 0,
-        extraData.supplyScore || 0,
-        extraData.financeScore || 0
-    ]
+        // 表格明细 - 展平所有 indicators
+        const allIndicators = []
+        res.sub_results.forEach(sub => {
+            if (sub.indicators) {
+                sub.indicators.forEach(ind => {
+                    allIndicators.push({
+                        layer: sub.name,
+                        metric: ind.name,
+                        value: ind.raw_value,
+                        score: ind.score,
+                        remark: ind.calculation || ind.grade
+                    })
+                })
+            }
+        })
+        details.value = allIndicators
+    }
+    
     initChart(scores)
 
-    // Details table
-    if (extraData.details) {
-        details.value = extraData.details
+    if (res.suggestions && res.suggestions.length > 0) {
+         summary.value[2].value = '优化建议'
+         summary.value[2].desc = res.suggestions[0]
     }
-    
-    if (extraData.advantage) {
-         summary.value[2].value = extraData.advantage.title
-         summary.value[2].desc = extraData.advantage.desc
-    }
-    if (extraData.risk) {
-         summary.value[3].value = extraData.risk.title
-         summary.value[3].desc = extraData.risk.desc
+    if (res.warnings && res.warnings.length > 0) {
+         summary.value[3].value = '风险预警'
+         summary.value[3].desc = res.warnings[0]
     }
 }
 

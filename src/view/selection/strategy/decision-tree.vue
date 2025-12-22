@@ -11,14 +11,8 @@
     <div class="content">
       <el-row :gutter="20">
         <el-col :span="24">
-             <div class="result-status" :class="decision === 'PASS' ? 'status-pass' : 'status-fail'">
-                 <div class="icon">
-                     <i :class="decision === 'PASS' ? 'el-icon-circle-check' : 'el-icon-circle-close'"></i>
-                 </div>
-                 <div class="text">
-                     <div class="main">最终判定: {{ decision }}</div>
-                     <div class="sub">{{ decision === 'PASS' ? '所有关键节点校验通过，符合选品标准' : '存在关键节点校验失败，建议终止' }}</div>
-                 </div>
+             <div class="result-icon" :class="decision.toLowerCase()">
+                 <el-icon><component :is="decision === 'PASS' ? 'CircleCheck' : 'CircleClose'" /></el-icon>
              </div>
         </el-col>
       </el-row>
@@ -32,7 +26,11 @@
                           <div class="node-header">
                               <span class="index">#{{ node.id }}</span>
                               <span class="status-tag">
-                                  <i :class="node.status === 'Pass' ? 'el-icon-check' : 'el-icon-close'"></i>
+                 <div class="node-status">
+                     <el-icon :color="node.status === 'Pass' ? '#67c23a' : '#f56c6c'">
+                        <component :is="node.status === 'Pass' ? 'Check' : 'Close'" />
+                     </el-icon>
+                 </div>
                                   {{ node.status }}
                               </span>
                           </div>

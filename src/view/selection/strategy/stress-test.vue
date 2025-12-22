@@ -90,17 +90,28 @@ const handleTest = async () => {
 }
 
 const processResult = (res) => {
-    tested.value = true
-    if (res.resultData) {
-        let data = res.resultData
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data) } catch (e) {}
-        }
-        if (data.results) results.value = data.results
-    } else {
-        // Fallback if structure different
-        results.value = []
-    }
+  executed.value = true
+  resultData.value = res
+  
+  if (res.detail_json) {
+    let data = typeof res.detail_json === 'string' ? JSON.parse(res.detail_json) : res.detail_json
+    
+    // 假设后端返回生存率 score 和 各场景数据
+    survivalRate.value = res.score || 0
+    scenarios.value = data.scenarios || []
+    
+    initChart()
+  } else if (res.sub_results) {
+      // 兼容 sub_results 模式
+      survivalRate.value = res.score || 0
+      scenarios.value = res.sub_results.map(s => ({
+          name: s.name,
+          impact: s.score,
+          status: s.score > 60 ? 'Pass' : 'Fail',
+          suggestion: s.indicators ? s.indicators[0]?.calculation : ''
+      }))
+      initChart()
+  }
 }
 
 const survivalRate = computed(() => {

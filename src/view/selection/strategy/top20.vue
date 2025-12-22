@@ -14,7 +14,7 @@
           <el-card shadow="hover" class="recommend-card">
             <template #header>
               <div class="card-header">
-                <span><i class="el-icon-trophy"></i> 核心推荐打法</span>
+                <span><el-icon><Trophy /></el-icon> 核心推荐打法</span>
               </div>
             </template>
             <div class="strategy-list">

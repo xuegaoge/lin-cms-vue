@@ -7,7 +7,7 @@
       </div>
       <div class="product-info" v-if="currentProduct">
         <span class="label">当前分析对象:</span>
-        <el-tag effect="dark" size="large" class="product-tag">{{ currentProduct.productName }}</el-tag>
+        <el-tag effect="dark" size="large" class="product-tag">{{ currentProduct.product_name }}</el-tag>
         <span class="asin">{{ currentProduct.asin }}</span>
         <el-button link type="primary" size="small" @click="changeProduct">切换</el-button>
       </div>

@@ -3,8 +3,8 @@
     <div class="header">
       <div class="title">产品管理</div>
       <div class="action-group">
-        <el-button type="primary" icon="el-icon-plus" @click="handleCreate">新增产品</el-button>
-        <el-button type="success" plain icon="el-icon-document-copy" @click="handleComparison">对比分析</el-button>
+        <el-button type="primary" icon="Plus" @click="handleCreate">新增产品</el-button>
+        <el-button type="success" plain icon="DocumentCopy" @click="handleComparison">对比分析</el-button>
       </div>
     </div>
 
@@ -12,7 +12,7 @@
     <div class="search-box">
       <el-form :inline="true" :model="searchForm" class="demo-form-inline">
         <el-form-item label="产品名称">
-          <el-input v-model="searchForm.name" placeholder="输入名称或ASIN" prefix-icon="el-icon-search"></el-input>
+          <el-input v-model="searchForm.name" placeholder="输入名称或ASIN" prefix-icon="Search"></el-input>
         </el-form-item>
         <el-form-item label="所属类目">
           <el-select v-model="searchForm.category" placeholder="全部类目" clearable>
@@ -44,8 +44,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetForm">重置</el-button>
+          <el-button type="primary" icon="Search" @click="handleSearch">查询</el-button>
+          <el-button icon="Refresh" @click="resetForm">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -56,7 +56,7 @@
         <el-table-column label="产品信息" min-width="200">
           <template #default="scope">
             <div class="product-info">
-               <div class="name">{{ scope.row.productName }}</div>
+               <div class="name">{{ scope.row.product_name }}</div>
                <div class="asin">ASIN: {{ scope.row.asin }}</div>
             </div>
           </template>
@@ -70,41 +70,41 @@
         <el-table-column label="评分概览" width="140" sortable>
              <template #default="scope">
                 <div class="score-cell clickable" @click="handleViewStrategySummary(scope.row)" title="点击查看详情">
-                  <div v-if="scope.row.latestScores">
-                     <div v-if="scope.row.latestScores.s01">
+                  <div v-if="scope.row.latest_scores">
+                     <div v-if="scope.row.latest_scores.s01" class="score-item">
                         <span class="label">S1:</span>
-                        <span :style="{ color: getScoreColor(scope.row.latestScores.s01) }">{{ scope.row.latestScores.s01 }}</span>
+                        <span class="score-val" :style="{ color: getScoreColor(scope.row.latest_scores.s01) }">{{ scope.row.latest_scores.s01 }}</span>
                      </div>
-                     <div v-if="scope.row.latestScores.s02">
+                     <div v-if="scope.row.latest_scores.s02" class="score-item">
                         <span class="label">S2:</span>
-                        <span :style="{ color: getScoreColor(scope.row.latestScores.s02) }">{{ scope.row.latestScores.s02 }}</span>
+                        <span class="score-val" :style="{ color: getScoreColor(scope.row.latest_scores.s02) }">{{ scope.row.latest_scores.s02 }}</span>
                      </div>
                   </div>
                   <span v-else>-</span>
                 </div>
              </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="最后更新" width="160" sortable />
-        <el-table-column fixed="right" label="操作" width="220" align="center">
+        <el-table-column prop="updated_at" label="最后更新" width="160" sortable />
+        <el-table-column fixed="right" label="操作" width="240" align="center">
           <template #default="scope">
-            <el-tooltip content="运行策略评估" placement="top">
-              <el-button link type="success" icon="el-icon-video-play" size="small" @click="handleExecute(scope.row)"></el-button>
-            </el-tooltip>
-            <el-divider direction="vertical"></el-divider>
-            <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-            <el-divider direction="vertical"></el-divider>
-            <el-dropdown trigger="click" @command="(cmd) => handleCommand(cmd, scope.row)">
-              <el-button link type="info" size="small">
-                更多<i class="el-icon-arrow-down el-icon--right"></i>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="trends">历史趋势</el-dropdown-item>
-                  <el-dropdown-item command="sop">SOP执行</el-dropdown-item>
-                  <el-dropdown-item command="delete" style="color: #f56c6c">删除产品</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <div class="operate-group">
+              <el-tooltip content="运行策略评估" placement="top">
+                <el-button type="success" icon="VideoPlay" size="small" circle @click="handleExecute(scope.row)"></el-button>
+              </el-tooltip>
+              <el-button type="primary" size="small" plain @click="handleDetail(scope.row)">详情</el-button>
+              <el-dropdown trigger="click" @command="(cmd) => handleCommand(cmd, scope.row)">
+                <el-button type="info" size="small" plain>
+                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="trends" icon="TrendCharts">历史趋势</el-dropdown-item>
+                    <el-dropdown-item command="sop" icon="List">SOP执行</el-dropdown-item>
+                    <el-dropdown-item command="delete" icon="Delete" style="color: #f56c6c">删除产品</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -175,9 +175,17 @@ const handleSearch = async () => {
       sort: searchForm.sort,
       order: searchForm.order
     })
-    // 根据后端返回结构适配，通常列表在 items 中
-    tableData.value = res.items || res
-    total.value = res.total || 0
+    // 适配后端返回结构 { code: 200, data: { items: [], total: 0 } }
+    if (res.items) {
+      tableData.value = res.items
+      total.value = res.total || 0
+    } else if (res.data && res.data.items) {
+      tableData.value = res.data.items
+      total.value = res.data.total || 0
+    } else {
+      tableData.value = res
+      total.value = 0
+    }
   } catch (error) {
     console.error('获取产品列表失败', error)
     // ElMessage.error('获取产品列表失败') // axios 拦截器可能已处理
@@ -219,7 +227,7 @@ const handleDetail = (row) => {
 const handleExecute = async (row) => {
   try {
     await Strategy.executeAll(row.id)
-    ElMessage.success(`已触发 [${row.productName}] 的全量策略评估`)
+    ElMessage.success(`已触发 [${row.product_name}] 的全量策略评估`)
     // 稍微延迟后跳转，让用户看到成功提示
     setTimeout(() => {
         router.push(`/selection/product/${row.id}?tab=strategies`)
@@ -301,13 +309,27 @@ onMounted(() => {
       .asin { font-size: 12px; color: #909399; font-family: monospace; }
     }
 
+    .operate-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
     .score-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      
       &.clickable {
         cursor: pointer;
-        &:hover { text-decoration: underline; }
+        &:hover { 
+            background-color: #f0f2f5;
+            border-radius: 4px;
+        }
       }
-      .label { font-size: 12px; color: #909399; margin-right: 4px; }
-      .suffix { font-size: 12px; color: #909399; margin-left: 2px; }
+      .label { font-size: 11px; color: #909399; margin-right: 4px; width: 20px; display: inline-block; }
+      .score-val { font-weight: 600; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
     }
     
     .pagination {

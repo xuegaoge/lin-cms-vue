@@ -22,7 +22,7 @@
                 <template #default="scope">
                     <div class="my-product-cell" :class="{'highlight': scope.row.myProductAdvantage}">
                         {{ scope.row.myProduct }}
-                        <i class="el-icon-star-on" v-if="scope.row.myProductAdvantage" style="color: #e6a23c"></i>
+                        <el-icon v-if="scope.row.myProductAdvantage" color="#e6a23c"><StarFilled /></el-icon>
                     </div>
                 </template>
             </el-table-column>
@@ -56,21 +56,15 @@
       <el-row :gutter="20" style="margin-top: 20px;">
           <el-col :span="12">
                <el-card shadow="hover" header="我的核心优势 (Strengths)">
-                   <div class="swot-item advantage">
-                       <i class="el-icon-circle-check"></i> 材质升级：使用 TPE 环保材质，优于竞品 PVC
-                   </div>
-                   <div class="swot-item advantage">
-                       <i class="el-icon-circle-check"></i> 赠品策略：附赠收纳袋和教程，提升性价比
+                   <div class="swot-item" :class="item.type" v-for="(item, index) in strengths" :key="'s'+index">
+                       <el-icon><CircleCheck /></el-icon> {{ item.text }}
                    </div>
                </el-card>
           </el-col>
            <el-col :span="12">
                <el-card shadow="hover" header="我的劣势与风险 (Weaknesses)">
-                   <div class="swot-item disadvantage">
-                       <i class="el-icon-warning-outline"></i> Review 数量：新品上架，缺乏社会认同
-                   </div>
-                   <div class="swot-item disadvantage">
-                       <i class="el-icon-warning-outline"></i> 品牌知名度：弱于竞品 A
+                   <div class="swot-item" :class="item.type" v-for="(item, index) in weaknesses" :key="'w'+index">
+                       <el-icon><Warning /></el-icon> {{ item.text }}
                    </div>
                </el-card>
           </el-col>
@@ -100,7 +94,8 @@ const loadData = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute('S15', productId)
-        processResult(res)
+        const data = res.data || res
+        processResult(data)
     } catch (e) {
         console.error(e)
     } finally {
@@ -109,34 +104,62 @@ const loadData = async () => {
 }
 
 const processResult = (res) => {
-    // 映射差异化建议到优势列表
-    if (res.suggestions) {
-        strengths.value = res.suggestions.map(s => ({
-            text: s,
-            type: 'advantage'
-        }))
-    }
-    
-    if (res.warnings) {
-        weaknesses.value = res.warnings.map(w => ({
-            text: w,
-            type: 'disadvantage'
-        }))
+    // 解析 detail_json
+    let details = {}
+    if (res.detail_json || res.DetailJson) {
+        try {
+            const raw = res.detail_json || res.DetailJson
+            details = typeof raw === 'string' ? JSON.parse(raw) : raw
+        } catch (e) { console.error(e) }
     }
 
-    // 构造对比矩阵（演示数据 + 占位符）
+    // 提取优势 (Suggestions / Strengths)
+    const rawSuggestions = details.Suggestions || details.suggestions || res.suggestions || []
+    if (rawSuggestions.length > 0) {
+        strengths.value = rawSuggestions.map(s => ({
+            text: typeof s === 'string' ? s : (s.Recommendation || s.action || '优势点'),
+            type: 'advantage'
+        }))
+    } else {
+        strengths.value = [{ text: '暂无显著优势识别', type: 'info' }]
+    }
+    
+    // 提取劣势 (Warnings / Weaknesses) - 如果没有 Warnings 字段，暂时留空或根据逻辑生成
+    const rawWarnings = details.Warnings || details.warnings || res.warnings || []
+    if (rawWarnings.length > 0) {
+        weaknesses.value = rawWarnings.map(w => ({
+            text: typeof w === 'string' ? w : (w.Warning || w.text || '风险点'),
+            type: 'disadvantage'
+        }))
+    } else {
+         weaknesses.value = [{ text: '暂无显著风险识别', type: 'info' }]
+    }
+
+    // 提取分数和决策
+    const score = details.Score || details.score || res.score || 0
+    const decision = details.Decision || details.decision || res.decision || '-'
+    const reason = details.Reason || details.reason || res.reason || ''
+
+    // 构造对比矩阵
+    // 尝试从 details 中获取 Competitors 数据，如果不存在则使用占位符
+    const competitorA = details.CompetitorA || '待填'
+    const competitorB = details.CompetitorB || '待填'
+    const competitorC = details.CompetitorC || '待填'
+
     tableData.value = [
         { 
             dimension: '综合竞争力', 
-            myProduct: `${res.score} 分`, myProductAdvantage: res.score > 70,
-            competitorA: '待填', competitorB: '待填', competitorC: '待填',
-            analysis: res.reason
+            myProduct: `${score} 分`, myProductAdvantage: score > 70,
+            competitorA: competitorA.Score || '-', 
+            competitorB: competitorB.Score || '-', 
+            competitorC: competitorC.Score || '-',
+            analysis: reason
         },
         { 
-            dimension: '差异化结论', 
-            myProduct: res.decision, myProductAdvantage: res.decision === 'GO',
+            dimension: '决策建议', 
+            myProduct: decision, myProductAdvantage: decision === 'GO',
             competitorA: '-', competitorB: '-', competitorC: '-',
-            analysis: '基于当前识别到的差异化机会得出的决策建议。'
+            analysis: '基于数据维度的综合自动化评估'
         }
     ]
 }

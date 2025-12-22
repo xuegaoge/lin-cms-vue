@@ -12,9 +12,9 @@
       <el-row :gutter="20">
          <el-col :span="24">
              <div class="result-banner" :class="isHighPotential ? 'banner-high' : 'banner-low'">
-                 <div class="icon-wrapper">
-                     <i :class="isHighPotential ? 'el-icon-s-opportunity' : 'el-icon-info'"></i>
-                 </div>
+             <div class="status-icon" :class="{ 'is-high': isHighPotential }">
+                 <el-icon><component :is="isHighPotential ? 'Opportunity' : 'InfoFilled'" /></el-icon>
+             </div>
                  <div class="text-wrapper">
                      <div class="main-text">{{ isHighPotential ? 'HIGH POTENTIAL (高爆款潜力)' : 'LOW POTENTIAL (潜力不足)' }}</div>
                      <div class="sub-text">{{ isHighPotential ? '检测到该产品具备多个爆款基因，建议重点投入资源打造' : '该产品缺乏显著的传播爆点，建议作为常规款或继续打磨' }}</div>
