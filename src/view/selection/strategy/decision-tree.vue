@@ -111,7 +111,9 @@ const loadData = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute('S14', productId)
-        processResult(res)
+        // API返回结构: { code: 200, data: { decision, warnings, ... } }
+        const data = res.data || res
+        processResult(data)
     } catch (e) {
         console.error(e)
     } finally {
@@ -120,7 +122,8 @@ const loadData = async () => {
 }
 
 const processResult = (res) => {
-    decision.value = res.decision
+    // 兼容多种大小写格式
+    decision.value = res.decision ?? res.Decision ?? 'WAIT'
     
     // 重置所有节点为 Pass
     nodes.value.forEach(group => {
@@ -129,14 +132,35 @@ const processResult = (res) => {
         })
     })
 
+    // 获取警告列表 (兼容多种格式)
+    const warnings = res.warnings ?? res.Warnings ?? []
+    const suggestions = res.suggestions ?? res.Suggestions ?? []
+
     // 根据 Warnings 将对应 code 的节点设为 Fail
-    if (res.warnings) {
-        res.warnings.forEach(warn => {
+    if (warnings && Array.isArray(warnings)) {
+        warnings.forEach(warn => {
             // 模糊匹配：只要警告文本中包含节点编号（如 N06），就标记为 Fail
             nodes.value.forEach(group => {
                 group.items.forEach(node => {
                     if (warn.includes(node.code)) {
                         node.status = 'Fail'
+                        // 更新节点描述为实际警告内容
+                        node.desc = warn
+                    }
+                })
+            })
+        })
+    }
+
+    // 根据 Suggestions 标记加分节点状态
+    if (suggestions && Array.isArray(suggestions)) {
+        suggestions.forEach(sug => {
+            nodes.value.forEach(group => {
+                group.items.forEach(node => {
+                    if (sug.includes(node.code)) {
+                        node.status = 'Pass'
+                        // 更新节点描述为实际建议内容
+                        node.desc = sug
                     }
                 })
             })

@@ -78,6 +78,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Strategy } from '@/lin/model/selection'
 import { ElMessage } from 'element-plus'
+import { StarFilled, CircleCheck, Warning } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

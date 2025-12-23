@@ -113,7 +113,9 @@ const loadData = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute('S09', productId)
-        processResult(res)
+        // API返回结构: { code: 200, data: { score, grade, ... } }
+        const data = res.data || res
+        processResult(data)
     } catch (e) {
         console.error(e)
     } finally {

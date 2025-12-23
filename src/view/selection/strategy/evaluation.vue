@@ -57,9 +57,9 @@
         <div class="card-header">综合决策建议</div>
         <el-result
             v-if="executed"
-            icon="success"
-            title="GO - 建议立项"
-            sub-title="该产品在市场空间和毛利率方面表现极佳，虽供应链稳定性稍弱，但整体风险可控。"
+            :icon="decisionIcon"
+            :title="decisionTitle"
+            :sub-title="decisionReason"
         >
         </el-result>
         <div class="suggestion-list" v-if="resultData">
@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
@@ -95,6 +95,25 @@ const mpsfChart = ref(null)
 let chartInstance = null
 const executed = ref(false)
 const resultData = ref(null)
+
+const decisionIcon = computed(() => {
+    const d = resultData.value?.decision || resultData.value?.Decision || ''
+    if (d === 'GO') return 'success'
+    if (d === 'STOP') return 'error'
+    return 'warning'
+})
+
+const decisionTitle = computed(() => {
+    const d = resultData.value?.decision || resultData.value?.Decision || ''
+    if (d === 'GO') return 'GO - 建议立项'
+    if (d === 'STOP') return 'STOP - 建议放弃'
+    if (d === 'WAIT') return 'WAIT - 建议观望'
+    return d || '评估完成'
+})
+
+const decisionReason = computed(() => {
+    return resultData.value?.reason || resultData.value?.Reason || '暂无详细理由'
+})
 
 const summary = ref([
     { label: '综合评分', value: '-', desc: '等待评估', class: 'primary' },
@@ -151,10 +170,13 @@ const handleExecute = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute('S01', productId)
-        processResult(res)
+        // API返回结构: { code: 200, data: { score, sub_results, ... } }
+        const data = res.data || res
+        processResult(data)
         ElMessage.success('S01 策略评估完成')
     } catch (e) {
         console.error(e)
+        ElMessage.error('策略执行失败')
     } finally {
         loading.value = false
     }
@@ -164,33 +186,44 @@ const processResult = (res) => {
     executed.value = true
     resultData.value = res
     
-    // Summary
-    summary.value[0].value = res.score
-    summary.value[0].desc = '评分等级: ' + (res.grade || '-')
-    summary.value[1].value = res.decision
+    // Summary - 兼容多种大小写格式
+    const score = res.score ?? res.Score ?? 0
+    const grade = res.grade ?? res.Grade ?? '-'
+    const decision = res.decision ?? res.Decision ?? '-'
     
-    // 从 sub_results 提取 MPSF 四层得分
-    const scores = [0, 0, 0, 0] // M, P, S, F
-    if (res.sub_results && Array.isArray(res.sub_results)) {
-        res.sub_results.forEach(sub => {
-            const name = sub.name.toLowerCase()
-            if (name.includes('市场') || name.includes('market')) scores[0] = sub.score
-            else if (name.includes('产品') || name.includes('product')) scores[1] = sub.score
-            else if (name.includes('供应') || name.includes('supply')) scores[2] = sub.score
-            else if (name.includes('财务') || name.includes('finance')) scores[3] = sub.score
+    summary.value[0].value = score
+    summary.value[0].desc = '评分等级: ' + grade
+    summary.value[1].value = decision
+    
+    // 从 subResults 提取 MPSF 四层得分 (兼容多种格式)
+    const subResults = res.subResults ?? res.SubResults ?? res.sub_results ?? []
+    const scores = [0, 0, 0, 0] // M, P, S(运营), F
+    
+    if (subResults && Array.isArray(subResults)) {
+        subResults.forEach(sub => {
+            const name = (sub.name ?? sub.Name ?? '').toLowerCase()
+            const subScore = sub.score ?? sub.Score ?? 0
+            
+            if (name.includes('市场') || name.includes('market')) scores[0] = subScore
+            else if (name.includes('产品') || name.includes('product')) scores[1] = subScore
+            else if (name.includes('运营') || name.includes('operation')) scores[2] = subScore
+            else if (name.includes('财务') || name.includes('finance')) scores[3] = subScore
         })
 
-        // 表格明细 - 展平所有 indicators
+        // 表格明细 - 展平所有 indicators (兼容 PascalCase)
         const allIndicators = []
-        res.sub_results.forEach(sub => {
-            if (sub.indicators) {
-                sub.indicators.forEach(ind => {
+        subResults.forEach(sub => {
+            const indicators = sub.indicators ?? sub.Indicators ?? []
+            const layerName = sub.name ?? sub.Name ?? ''
+            
+            if (indicators && Array.isArray(indicators)) {
+                indicators.forEach(ind => {
                     allIndicators.push({
-                        layer: sub.name,
-                        metric: ind.name,
-                        value: ind.raw_value,
-                        score: ind.score,
-                        remark: ind.calculation || ind.grade
+                        layer: layerName,
+                        metric: ind.name ?? ind.Name ?? '',
+                        value: ind.rawValue ?? ind.RawValue ?? ind.raw_value ?? '-',
+                        score: ind.score ?? ind.Score ?? 0,
+                        remark: ind.calculation ?? ind.Calculation ?? ind.grade ?? ind.Grade ?? ''
                     })
                 })
             }
@@ -200,14 +233,100 @@ const processResult = (res) => {
     
     initChart(scores)
 
-    if (res.suggestions && res.suggestions.length > 0) {
-         summary.value[2].value = '优化建议'
-         summary.value[2].desc = res.suggestions[0]
+    // 处理建议和警告 (兼容多种格式)
+    const suggestions = res.suggestions ?? res.Suggestions ?? []
+    const warnings = res.warnings ?? res.Warnings ?? []
+    
+    // 自动分析优势和风险 (深入到具体指标)
+    let strengthTitle = '暂无显著优势'
+    let strengthDesc = '各项指标表现平平'
+    let riskTitle = '暂无显著风险'
+    let riskDesc = '各项指标表现均衡'
+
+    // 1. 分析优势 (Score >= 80)
+    // 优先从 suggestions 获取
+    if (suggestions.length > 0) {
+         strengthTitle = '策略建议'
+         strengthDesc = typeof suggestions[0] === 'string' ? suggestions[0] : suggestions[0]?.action ?? ''
+    } else if (subResults && subResults.length > 0) {
+        // 展平所有指标并按分数降序排序
+        let allInds = []
+        subResults.forEach(sub => {
+            const indicators = sub.indicators ?? sub.Indicators ?? []
+            if (indicators && Array.isArray(indicators)) {
+                indicators.forEach(ind => {
+                    allInds.push({ 
+                        name: ind.name ?? ind.Name ?? '', 
+                        score: ind.score ?? ind.Score ?? 0,
+                        layer: sub.name ?? sub.Name ?? ''
+                    })
+                })
+            }
+        })
+        
+        // 找到得分最高的指标
+        allInds.sort((a, b) => b.score - a.score)
+        const best = allInds[0]
+        
+        if (best && best.score >= 80) {
+            // 根据指标名称映射商业术语
+            if (best.name.includes('ROI') || best.name.includes('毛利')) strengthTitle = '高盈利模型'
+            else if (best.name.includes('搜索') || best.name.includes('增长')) strengthTitle = '高增长潜力'
+            else if (best.name.includes('竞品') || best.name.includes('集中度')) strengthTitle = '竞争格局佳'
+            else if (best.name.includes('转化') || best.name.includes('CPC')) strengthTitle = '运营效率高'
+            else strengthTitle = `${best.name}表现优异`
+            
+            strengthDesc = `${best.layer}的${best.name}得分高达${best.score}分`
+        } else if (best) {
+            strengthTitle = '综合表现尚可'
+            strengthDesc = `${best.layer}表现相对较好`
+        }
     }
-    if (res.warnings && res.warnings.length > 0) {
-         summary.value[3].value = '风险预警'
-         summary.value[3].desc = res.warnings[0]
+
+    // 2. 分析风险 (Score < 60)
+    // 优先从 warnings 获取
+    if (warnings.length > 0) {
+         riskTitle = '风险预警'
+         riskDesc = typeof warnings[0] === 'string' ? warnings[0] : warnings[0]?.warning ?? ''
+    } else if (subResults && subResults.length > 0) {
+        let allInds = []
+        subResults.forEach(sub => {
+            const indicators = sub.indicators ?? sub.Indicators ?? []
+            if (indicators && Array.isArray(indicators)) {
+                indicators.forEach(ind => {
+                    allInds.push({ 
+                        name: ind.name ?? ind.Name ?? '', 
+                        score: ind.score ?? ind.Score ?? 0,
+                        layer: sub.name ?? sub.Name ?? ''
+                    })
+                })
+            }
+        })
+        
+        // 找到得分最低的指标
+        allInds.sort((a, b) => a.score - b.score)
+        const worst = allInds[0]
+        
+        if (worst && worst.score < 60) {
+            if (worst.name.includes('搜索') || worst.name.includes('增长')) riskTitle = '市场需求疲软'
+            else if (worst.name.includes('竞品') || worst.name.includes('集中度')) riskTitle = '市场竞争激烈'
+            else if (worst.name.includes('ROI') || worst.name.includes('毛利')) riskTitle = '盈利空间受限'
+            else if (worst.name.includes('转化') || worst.name.includes('CPC')) riskTitle = '运营难度大'
+            else if (worst.name.includes('风险') || worst.name.includes('合规')) riskTitle = '合规风险高'
+            else riskTitle = `${worst.name}存在短板`
+            
+            riskDesc = `${worst.layer}的${worst.name}仅得${worst.score}分`
+        } else {
+             riskTitle = '无明显短板'
+             riskDesc = '所有核心指标均在及格线以上'
+        }
     }
+
+    summary.value[2].value = strengthTitle
+    summary.value[2].desc = strengthDesc
+    
+    summary.value[3].value = riskTitle
+    summary.value[3].desc = riskDesc
 }
 
 const loadData = async () => {
@@ -218,50 +337,14 @@ const loadData = async () => {
     }
 
     try {
-        // 尝试获取历史记录
-        const res = await Strategy.getExecutionHistory(productId, 'S01')
-        const history = res.data || res
-        // 找到最新的 S01 记录
-        const latestInfo = Array.isArray(history) ? history.find(h => h.is_latest) || history[0] : (history.items && history.items[0])
-        
-        if (latestInfo) {
-            // 如果有历史记录，直接显示
-            // 注意：API 返回的历史记录字段可能全是下划线，也可能是驼峰，需要适配
-            // 这里假设 processResult 能处理通用结构，或者我们需要转换一下
-            // processResult 期望的是 Strategy.execute 返回的结构，通常包含 sub_results / detail_json
-            
-            // 为了保险，如果字段不全，可以考虑只 update summary，或者重新 execute
-            // 这里我们尝试复用 processResult
-            
-            // 构造兼容 processResult 的对象
-            const compatibleRes = {
-                score: latestInfo.score,
-                grade: latestInfo.grade,
-                decision: latestInfo.decision,
-                reason: latestInfo.reason,
-                sub_results: latestInfo.subResults || (latestInfo.sub_results_json ? JSON.parse(latestInfo.sub_results_json) : []),
-                suggestions: latestInfo.suggestions || (latestInfo.suggestions_json ? JSON.parse(latestInfo.suggestions_json) : []),
-                warnings: latestInfo.warnings || (latestInfo.warnings_json ? JSON.parse(latestInfo.warnings_json) : [])
-            }
-            
-            // 如果 sub_results 为空 (可能 history api 没返回完整 json)，则尝试解析 detail_json
-            if ((!compatibleRes.sub_results || compatibleRes.sub_results.length === 0) && latestInfo.detail_json) {
-                try {
-                     const detail = JSON.parse(latestInfo.detail_json)
-                     if (detail.sub_results) compatibleRes.sub_results = detail.sub_results
-                } catch(e){}
-            }
-
-            processResult(compatibleRes)
-        } else {
-             // 无历史记录，仅初始化
-             initChart([0,0,0,0])
-             if (route.query.autoRun) {
-                handleExecute()
-             }
-        }
+        // 直接执行策略获取完整数据（包含Indicators）
+        // 历史记录API返回的数据中Indicators被序列化为字符串，丢失了详情
+        const res = await Strategy.execute('S01', productId)
+        // res 的结构: { code: 200, data: { score, sub_results: [...], ... } }
+        const data = res.data || res
+        processResult(data)
     } catch (e) {
-        console.error('Failed to load history', e)
+        console.error('Failed to load S01 data', e)
         initChart([0,0,0,0])
     }
 }

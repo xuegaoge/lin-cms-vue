@@ -2,7 +2,10 @@
   <div class="container">
     <div class="header">
       <div class="title">企业定位评估 (S11)</div>
-      <el-button type="primary" @click="handleSave">保存评估</el-button>
+      <div class="actions">
+        <el-button @click="handleBack">返回</el-button>
+        <el-button type="primary" @click="handleSave" style="margin-left: 10px;">保存评估</el-button>
+      </div>
     </div>
 
     <el-row :gutter="20">
@@ -73,11 +76,17 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { Enterprise } from '@/lin/model/selection'
 
+const router = useRouter()
 const radarChart = ref(null)
+
+const handleBack = () => {
+  router.back()
+}
 let chartInstance = null
 
 const profile = reactive({

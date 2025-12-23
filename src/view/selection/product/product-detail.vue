@@ -547,7 +547,7 @@ const getStrategyPath = (code) => {
         'S12': 'scoring',
         'S13': 'explosive',
         'S14': 'decision-tree',
-        'S15': 'competitor-analysis',
+        'S15': 'competitor',
         'S16': 'scoring',
         'S17': 'innovation',
         'S18': 'stress-test',
@@ -590,8 +590,20 @@ const loadData = async (id) => {
     if (strategyData) {
         // 后端返回可能是 { items: [], total: ... } 或直接 []
         const items = Array.isArray(strategyData) ? strategyData : (strategyData.items || [])
-        strategyResults.value = items
-            .filter(item => item.is_latest) // 仅显示最新结果
+        
+        // 按策略代码去重，只保留每个策略的最新记录（按executed_at降序）
+        const latestByCode = new Map()
+        items
+            .filter(item => item.is_latest) // 先过滤最新记录
+            .sort((a, b) => (b.executed_at || 0) - (a.executed_at || 0)) // 按时间降序
+            .forEach(item => {
+                // 只保留每个策略代码的第一条（最新的）
+                if (!latestByCode.has(item.strategy_code)) {
+                    latestByCode.set(item.strategy_code, item)
+                }
+            })
+        
+        strategyResults.value = Array.from(latestByCode.values())
             .map(item => ({
                 ...item,
                 code: item.strategy_code,
@@ -602,6 +614,7 @@ const loadData = async (id) => {
                 path: getStrategyPath(item.strategy_code),
                 query: ['S05', 'S06', 'S07', 'S10', 'S12', 'S16', 'S19', 'S20', 'S21'].includes(item.strategy_code) ? { code: item.strategy_code } : {}
             }))
+            .sort((a, b) => a.code.localeCompare(b.code)) // 按策略代码排序
     }
   } catch (error) {
     console.error('加载详情失败', error)

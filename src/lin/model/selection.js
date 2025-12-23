@@ -49,9 +49,98 @@ export class Enterprise {
 /**
  * 策略执行模型
  */
+/**
+ * 统一策略结果数据结构 (处理大小写不一致问题)
+ */
+function normalizeStrategyData(data) {
+  if (!data) return data
+
+  // 处理数组
+  if (Array.isArray(data)) {
+    return data.map(item => normalizeStrategyData(item))
+  }
+
+  // 处理对象
+  if (typeof data === 'object') {
+    const normalized = { ...data }
+
+    // 映射表：标准字段 -> 可能的原始字段
+    const fieldMap = {
+      score: ['Score', 'score'],
+      decision: ['Decision', 'decision'],
+      grade: ['Grade', 'grade'],
+      reason: ['Reason', 'reason'],
+      strategyName: ['StrategyName', 'strategyName', 'strategy_name'],
+      strategyCode: ['StrategyCode', 'strategyCode', 'strategy_code'],
+      subResults: ['SubResults', 'subResults', 'sub_results'],
+      detailJson: ['DetailJson', 'detailJson', 'detail_json'],
+      suggestions: ['Suggestions', 'suggestions'],
+      warnings: ['Warnings', 'warnings'],
+      indicators: ['Indicators', 'indicators'],
+      recommendations: ['Recommendations', 'recommendations'],
+      riskAlerts: ['RiskAlerts', 'riskAlerts', 'risk_alerts']
+    }
+
+    // 执行映射
+    Object.keys(fieldMap).forEach(key => {
+      const sourceKeys = fieldMap[key]
+      for (const sourceKey of sourceKeys) {
+        if (data[sourceKey] !== undefined) {
+          normalized[key] = data[sourceKey]
+          break
+        }
+      }
+    })
+
+    // 递归处理子结构
+    if (normalized.subResults && Array.isArray(normalized.subResults)) {
+      normalized.subResults = normalized.subResults.map(sub => normalizeStrategyData(sub))
+    }
+
+    // 递归处理风险预警项
+    if (normalized.riskAlerts && Array.isArray(normalized.riskAlerts)) {
+      normalized.riskAlerts = normalized.riskAlerts.map(alert => {
+        // 归一化每个风险项的字段名
+        return {
+          riskCode: alert.riskCode ?? alert.RiskCode ?? '',
+          riskName: alert.riskName ?? alert.RiskName ?? '',
+          riskLevel: alert.riskLevel ?? alert.RiskLevel ?? '',
+          riskType: alert.riskType ?? alert.RiskType ?? '',
+          description: alert.description ?? alert.Description ?? '',
+          triggerValue: alert.triggerValue ?? alert.TriggerValue ?? '',
+          thresholdValue: alert.thresholdValue ?? alert.ThresholdValue ?? '',
+          suggestions: alert.suggestions ?? alert.Suggestions ?? []
+        }
+      })
+    }
+
+    // 自动解析 DetailJson
+    if (normalized.detailJson && typeof normalized.detailJson === 'string') {
+      try {
+        const parsed = JSON.parse(normalized.detailJson)
+        // 尝试归一化解析后的 JSON，如果是对象
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          // 将解析后的字段也合并进来 (例如 Finance.Roi)
+          // 注意：这里我们只把 detailJson 解析成对象放回去，不深度合并以免覆盖
+          normalized.detailData = normalizeStrategyData(parsed)
+        } else {
+          normalized.detailData = parsed
+        }
+      } catch (e) { }
+    } else if (normalized.detailJson) {
+      normalized.detailData = normalizeStrategyData(normalized.detailJson)
+    }
+
+    return normalized
+  }
+
+  return data
+}
+
 export class Strategy {
-  static execute(strategyCode, productId, payload = {}) {
-    return post(`api/selection/strategies/${strategyCode}/execute`, { product_id: productId, ...payload })
+  static async execute(strategyCode, productId, payload = {}) {
+    const res = await post(`api/selection/strategies/${strategyCode}/execute`, { product_id: productId, ...payload })
+    return normalizeStrategyData(res)
   }
 
   static executeAll(productId) {
@@ -67,13 +156,21 @@ export class Strategy {
   }
 
   // 新增: 获取策略执行历史
-  static getExecutionHistory(productId, params = {}) {
-    return get(`api/selection/strategies/products/${productId}/strategies`, params)
+  static async getExecutionHistory(productId, params = {}) {
+    const res = await get(`api/selection/strategies/products/${productId}/strategies`, params)
+    // 如果返回的是分页结构 { total: 10, items: [] } 或 { items: [] }
+    if (res && res.items) {
+      res.items = normalizeStrategyData(res.items)
+    } else if (Array.isArray(res)) {
+      return normalizeStrategyData(res)
+    }
+    return res
   }
 
   // 新增: 获取单次执行详情
-  static getExecutionDetail(executionId) {
-    return get(`api/selection/strategies/executions/${executionId}`)
+  static async getExecutionDetail(executionId) {
+    const res = await get(`api/selection/strategies/executions/${executionId}`)
+    return normalizeStrategyData(res)
   }
 
   // 新增: 重新执行

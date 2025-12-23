@@ -93,7 +93,9 @@ const loadData = async () => {
     loading.value = true
     try {
         const res = await Strategy.execute('S08', productId)
-        processResult(res)
+        // API返回结构: { code: 200, data: { suggestions, ... } }
+        const data = res.data || res
+        processResult(data)
     } catch (e) {
         console.error(e)
     } finally {
@@ -102,8 +104,12 @@ const loadData = async () => {
 }
 
 const processResult = (res) => {
-    if (res.suggestions) {
-        const mapped = res.suggestions.map((s, index) => {
+    // API返回结构为 { code: 200, data: { suggestions: [...] } }
+    const data = res.data || res
+    const suggestions = data.suggestions || []
+    
+    if (suggestions.length > 0) {
+        const mapped = suggestions.map((s, index) => {
             const parts = s.split(':')
             const content = parts[1] ? parts[1].split('-') : [s]
             return {
@@ -113,7 +119,7 @@ const processResult = (res) => {
                 scenario: '基于产品特征匹配',
                 matchScore: Math.max(95 - (index * 5), 60), // 模拟匹配度递减
                 difficulty: index < 3 ? 'Easy' : (index < 6 ? 'Medium' : 'Hard'),
-                reason: res.reason
+                reason: data.reason || res.reason
             }
         })
         
