@@ -3,6 +3,9 @@
     <div class="header">
       <div class="title">S02: 40题自诊系统</div>
       <div class="actions">
+        <el-button @click="openTool('cr3')" size="small" type="info" plain>
+          <i class="el-icon-calculator"></i> 选品计算器
+        </el-button>
         <el-button @click="handleBack">返回</el-button>
         <el-button type="primary" @click="handleSubmit">提交诊断</el-button>
       </div>
@@ -20,7 +23,18 @@
                 </div>
               </template>
               <div v-for="(q, qIndex) in group.questions" :key="qIndex" class="question-item">
-                <div class="q-text">{{ (gIndex * 10) + qIndex + 1 }}. {{ q.text }}</div>
+                <div class="q-text">
+                  {{ (gIndex * 10) + qIndex + 1 }}. {{ q.text }}
+                  <el-link 
+                    v-if="q.tool" 
+                    type="primary" 
+                    :underline="false" 
+                    @click.stop="openTool(q.tool)"
+                    style="margin-left: 8px; font-size: 12px;"
+                  >
+                    <i class="el-icon-help"></i> 计算器
+                  </el-link>
+                </div>
                 
                 <!-- 统一三段式评估组件 -->
                 <el-radio-group v-model="answers[q.id]" size="small" class="answer-group">
@@ -62,6 +76,16 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- 选品计算器弹窗 -->
+    <el-dialog
+      v-model="toolVisible"
+      title="选品辅助计算器"
+      width="600px"
+      destroy-on-close
+    >
+      <selection-tools :active-tab="currentTool" />
+    </el-dialog>
   </div>
 </template>
 
@@ -71,9 +95,18 @@ import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Strategy } from '@/lin/model/selection'
+import SelectionTools from './components/SelectionTools.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+const toolVisible = ref(false)
+const currentTool = ref('cr3')
+
+const openTool = (toolName) => {
+  currentTool.value = toolName
+  toolVisible.value = true
+}
 
 const handleBack = () => {
   const productId = route.query.productId
@@ -102,7 +135,7 @@ const questionGroups = [
       { id: 'Q3', text: '市场供需比（搜索量/在售商品数）是否大于1.5？' },
       { id: 'Q4', text: '该类目是否处于成长期（非成熟期或衰退期）？' },
       { id: 'Q5', text: '未来12个月内是否存在明显的季节性淡季（需提前备货）？' },
-      { id: 'Q6', text: '季节性系数是否小于0.6（非极强季节性产品）？' },
+      { id: 'Q6', text: '季节性系数是否小于0.6（非极强季节性产品）？', tool: 'seasonality' },
       { id: 'Q7', text: '核心关键词月搜索量是否大于1000？' },
       { id: 'Q8', text: '搜索量年增长率是否大于15%？' },
       { id: 'Q9', text: '首页新品成功率（上架<6个月）是否大于30%？' },
@@ -148,7 +181,8 @@ const questionGroups = [
       { id: 'Q26', text: 'BSR榜单销量梯度是否平滑（无断层）？' },
       { 
         id: 'Q27', text: 'Top 3 品牌市场占有率是否低于70%（无垄断）？', 
-        levelLabels: { 25: '极低/散装', 10: '中度竞争', 0: '寡头垄断/禁区' } 
+        levelLabels: { 25: '极低/散装', 10: '中度竞争', 0: '寡头垄断/禁区' },
+        tool: 'cr3'
       },
       { 
         id: 'Q28', text: '平均CPC出价是否低于 $0.8？', 
@@ -285,12 +319,10 @@ const handleSubmit = async () => {
 
 const loadData = async () => {
     const productId = route.query.productId
-    if (!productId) return
+    if (!productId || productId === 'create') return
     
-    // 获取历史执行记录，获取多条以防最新的一条是自动执行覆盖了手动提交
     try {
         const historyRes = await Strategy.getExecutionHistory(productId, { strategyCode: 'S02', page: 1, size: 20 })
-        // console.log('historyRes', historyRes) // Debug
         
         let items = []
         if (historyRes?.items && Array.isArray(historyRes.items)) {
@@ -302,13 +334,11 @@ const loadData = async () => {
         }
         
         if (items.length > 0) {
-            // 1. 优先寻找包含手动提交答案的记录 (answers 字段)
             let targetRecord = items.find(item => {
                 const d = item.detailData || item.detail_json
                 return d && d.answers
             })
 
-            // 2. 如果找不到，寻找包含 Questions 数组的记录（自动执行记录）
             if (!targetRecord) {
                 targetRecord = items[0]
             }
@@ -316,34 +346,25 @@ const loadData = async () => {
             if (targetRecord) {
                 const data = targetRecord.detailData || targetRecord.detail_json
                 
-                // 恢复逻辑
                 if (data && data.answers) {
                     Object.keys(data.answers).forEach(key => {
                         if (typeof data.answers[key] === 'boolean') {
                             answers[key] = data.answers[key] ? 25 : 0
                         } else if (typeof data.answers[key] === 'number') {
-                            // 兼容旧数据：只要有分(>0)，就视为通过(25)，否则为0
-                            answers[key] = data.answers[key] > 0 ? 25 : 0
+                            answers[key] = data.answers[key]
                         }
                     })
-                    submitted.value = false // 允许用户基于历史修改再次提交，不锁定
-                    // 仅当是手动提交记录时，才视为已提交，但这会锁定表单，或许我们希望用户能继续修
-                    // 如果需要锁定，可以根据 manualSubmit
+                    submitted.value = false
                     if (data.manualSubmit) {
                         submitted.value = true
                     }
-                    console.log('已从历史记录(Manual Answers)恢复')
                 } else if (data && data.Questions && Array.isArray(data.Questions)) {
                     data.Questions.forEach(q => {
                         if (q.code) {
-                            // 自动执行记录中，passed=true为25分，否则为0
-                            // 但由于不确定是否是用户手动选的，这里只恢复状态
                             answers[q.code] = q.passed ? 25 : 0
                         }
                     })
-                     // 如果是自动记录，不要设为 submitted，让用户可以继续操作
                     submitted.value = false
-                    console.log('已从历史记录(Questions)恢复')
                 }
             }
         }
@@ -371,6 +392,11 @@ onMounted(() => {
     padding: 15px 20px;
     border-radius: 4px;
     .title { font-size: 18px; font-weight: bold; }
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
   }
 
   .card {

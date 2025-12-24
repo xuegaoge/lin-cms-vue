@@ -9,6 +9,9 @@ export class Product {
   }
 
   static getProduct(id) {
+    if (!id || id === 'undefined' || id === 'create' || isNaN(id) || String(id) === 'undefined') {
+      return Promise.resolve(null)
+    }
     return get(`api/selection/products/${id}`)
   }
 
@@ -17,6 +20,9 @@ export class Product {
   }
 
   static updateProduct(id, data) {
+    if (!id || id === 'undefined' || isNaN(id) || String(id) === 'undefined') {
+      return Promise.resolve(null)
+    }
     return put(`api/selection/products/${id}`, data)
   }
 
@@ -157,6 +163,9 @@ export class Strategy {
 
   // 新增: 获取策略执行历史
   static async getExecutionHistory(productId, params = {}) {
+    if (!productId || productId === 'undefined' || isNaN(productId) || String(productId) === 'undefined') {
+      return []
+    }
     const res = await get(`api/selection/strategies/products/${productId}/strategies`, params)
     // 如果返回的是分页结构 { total: 10, items: [] } 或 { items: [] }
     if (res && res.items) {

@@ -560,7 +560,7 @@ const getStrategyPath = (code) => {
 
 onMounted(() => {
   const id = route.params.id
-  if (id && id !== ':id') {
+  if (id && id !== ':id' && id !== 'create') {
     isEdit.value = true
     loadData(id)
   }
@@ -571,6 +571,8 @@ onMounted(() => {
 })
 
 const loadData = async (id) => {
+  // 严格校验：只有正整数 ID 才允许发起请求
+  if (!id || id === 'create' || isNaN(id)) return
   try {
     loading.value = true
     // 并行加载产品详情和策略历史
@@ -636,7 +638,13 @@ const handleSave = async () => {
     } else {
       const res = await Product.createProduct(form)
       ElMessage.success('创建成功')
-      router.replace(`/selection/product/${res.id}`)
+      // 兼容处理：尝试从 res 或 res.data 中获取新生成的 ID
+      const newId = res?.id || res?.data?.id
+      if (newId) {
+        router.replace(`/selection/product/${newId}`)
+      } else {
+        router.push('/selection/products')
+      }
     }
   } catch (error) {
     console.error('保存失败', error)
