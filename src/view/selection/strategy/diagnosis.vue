@@ -95,7 +95,6 @@ import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Strategy } from '@/lin/model/selection'
-import SelectionTools from './components/SelectionTools.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -348,23 +347,27 @@ const loadData = async () => {
                 
                 if (data && data.answers) {
                     Object.keys(data.answers).forEach(key => {
-                        if (typeof data.answers[key] === 'boolean') {
-                            answers[key] = data.answers[key] ? 25 : 0
-                        } else if (typeof data.answers[key] === 'number') {
-                            answers[key] = data.answers[key]
+                        if (answers.hasOwnProperty(key)) { // 确保key存在于answers对象中
+                            if (typeof data.answers[key] === 'boolean') {
+                                answers[key] = data.answers[key] ? 25 : 0
+                            } else if (typeof data.answers[key] === 'number') {
+                                answers[key] = data.answers[key]
+                            }
                         }
                     })
                     submitted.value = false
                     if (data.manualSubmit) {
-                        submitted.value = true
+                        submitted.value = false // 允许用户基于历史修改再次提交
                     }
+                    console.log('已从历史记录(Manual Answers)恢复答案', Object.keys(data.answers).length, '个答案')
                 } else if (data && data.Questions && Array.isArray(data.Questions)) {
                     data.Questions.forEach(q => {
-                        if (q.code) {
+                        if (q.code && answers.hasOwnProperty(q.code)) { // 确保key存在于answers对象中
                             answers[q.code] = q.passed ? 25 : 0
                         }
                     })
                     submitted.value = false
+                    console.log('已从历史记录(Questions)恢复答案', data.Questions.length, '个答案')
                 }
             }
         }
